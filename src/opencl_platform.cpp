@@ -297,7 +297,7 @@ void* OpenCLPlatform::alloc(DeviceId dev, int64_t size) {
     if (!size) return nullptr;
 
     #ifdef CL_VERSION_2_0
-    if (devices_[dev].version_major == 2) {
+    if (devices_[dev].version_major >= 2) {
         cl_mem_flags flags = CL_MEM_READ_WRITE;
         void* mem = clSVMAlloc(devices_[dev].ctx, flags, size, 0);
         if (mem == nullptr)
@@ -318,7 +318,7 @@ void* OpenCLPlatform::alloc_unified(DeviceId dev, int64_t size) {
     if (!size) return nullptr;
 
     #ifdef CL_VERSION_2_0
-    if (devices_[dev].version_major == 2) {
+    if (devices_[dev].version_major >= 2) {
         cl_mem_flags flags = CL_MEM_READ_WRITE;
         if (devices_[dev].svm_caps & CL_DEVICE_SVM_FINE_GRAIN_BUFFER)
             flags |= CL_MEM_SVM_FINE_GRAIN_BUFFER;
@@ -336,7 +336,7 @@ void* OpenCLPlatform::alloc_unified(DeviceId dev, int64_t size) {
 
 void OpenCLPlatform::release(DeviceId dev, void* ptr) {
     #ifdef CL_VERSION_2_0
-    if (devices_[dev].version_major == 2)
+    if (devices_[dev].version_major >= 2)
         return clSVMFree(devices_[dev].ctx, ptr);
     #endif
     unused(dev);
@@ -378,7 +378,7 @@ void OpenCLPlatform::launch_kernel(DeviceId dev, const LaunchParams& launch_para
             clSetKernelArg(kernel, i, sizeof(cl_mem), &kernel_structs[i]);
         } else {
             #ifdef CL_VERSION_2_0
-            if (launch_params.args.types[i] == KernelArgType::Ptr && devices_[dev].version_major == 2) {
+            if (launch_params.args.types[i] == KernelArgType::Ptr && devices_[dev].version_major >= 2) {
                 cl_int err = clSetKernelArgSVMPointer(kernel, i, *(void**)launch_params.args.data[i]);
                 CHECK_OPENCL(err, "clSetKernelArgSVMPointer()");
                 continue;
@@ -450,10 +450,10 @@ void OpenCLPlatform::copy(DeviceId dev_src, const void* src, int64_t offset_src,
     unused(dev_dst);
 
     #ifdef CL_VERSION_2_0
-    if (devices_[dev_src].version_major == 2 && devices_[dev_dst].version_major == 2)
-        return copy_svm(src, offset_src, dst, offset_dst, size);
-    if ((devices_[dev_src].version_major == 2 && devices_[dev_dst].version_major == 1) ||
-        (devices_[dev_src].version_major == 1 && devices_[dev_dst].version_major == 2))
+    if (devices_[dev_src].version_major >= 2 && devices_[dev_dst].version_major >= 2)
+        return copy_svm(dev_src, src, offset_src, dst, offset_dst, size);
+    if ((devices_[dev_src].version_major >= 2 && devices_[dev_dst].version_major == 1) ||
+        (devices_[dev_src].version_major == 1 && devices_[dev_dst].version_major >= 2))
         error("copy between SVM and non-SVM OpenCL devices % and %", dev_src, dev_dst);
     #endif
 
@@ -464,8 +464,8 @@ void OpenCLPlatform::copy(DeviceId dev_src, const void* src, int64_t offset_src,
 
 void OpenCLPlatform::copy_from_host(const void* src, int64_t offset_src, DeviceId dev_dst, void* dst, int64_t offset_dst, int64_t size) {
     #ifdef CL_VERSION_2_0
-    if (devices_[dev_dst].version_major == 2)
-        return copy_svm(src, offset_src, dst, offset_dst, size);
+    if (devices_[dev_dst].version_major >= 2)
+        return copy_svm(dev_dst, src, offset_src, dst, offset_dst, size);
     #endif
     cl_int err = clEnqueueWriteBuffer(devices_[dev_dst].queue, (cl_mem)dst, CL_FALSE, offset_dst, size, (char*)src + offset_src, 0, NULL, NULL);
     err |= clFinish(devices_[dev_dst].queue);
@@ -474,16 +474,23 @@ void OpenCLPlatform::copy_from_host(const void* src, int64_t offset_src, DeviceI
 
 void OpenCLPlatform::copy_to_host(DeviceId dev_src, const void* src, int64_t offset_src, void* dst, int64_t offset_dst, int64_t size) {
     #ifdef CL_VERSION_2_0
-    if (devices_[dev_src].version_major == 2)
-        return copy_svm(src, offset_src, dst, offset_dst, size);
+    if (devices_[dev_src].version_major >= 2)
+        return copy_svm(dev_src, src, offset_src, dst, offset_dst, size);
     #endif
     cl_int err = clEnqueueReadBuffer(devices_[dev_src].queue, (cl_mem)src, CL_FALSE, offset_src, size, (char*)dst + offset_dst, 0, NULL, NULL);
     err |= clFinish(devices_[dev_src].queue);
     CHECK_OPENCL(err, "clEnqueueReadBuffer()");
 }
 
-void OpenCLPlatform::copy_svm(const void* src, int64_t offset_src, void* dst, int64_t offset_dst, int64_t size) {
-    std::copy((char*)src + offset_src, (char*)src + offset_src + size, (char*)dst + offset_dst);
+void OpenCLPlatform::copy_svm(DeviceId dev, const void *src, int64_t offset_src, void *dst, int64_t offset_dst, int64_t size) {
+    #ifdef CL_VERSION_2_0
+        cl_int err = clEnqueueSVMMemcpy(devices_[dev].queue, CL_FALSE, (cl_mem)((char *)dst + offset_dst), (cl_mem)((char *)src + offset_src), (size_t)size, 0, NULL, NULL);
+        err |= clFinish(devices_[dev].queue);
+        CHECK_OPENCL(err, "clEnqueueSVMMemcpy()");
+    #else
+        unused(dev);
+        std::copy((char *)src + offset_src, (char *)src + offset_src + size, (char *)dst + offset_dst);
+    #endif
 }
 
 static std::string program_as_string(cl_program program) {
