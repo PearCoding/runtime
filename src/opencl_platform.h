@@ -66,6 +66,7 @@ protected:
         std::unordered_map<std::string, cl_program> programs;
         std::unordered_map<cl_program, KernelMap> kernels;
         std::unordered_map<cl_kernel, cl_command_queue> kernels_queue;
+        std::unordered_map<std::string, std::vector<cl_mem>> kernel_launch_cache_;
 
         // Atomics do not have a move constructor. This structure introduces one.
         struct AtomicData {

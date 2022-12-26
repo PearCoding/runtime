@@ -272,7 +272,19 @@ OpenCLPlatform::OpenCLPlatform(Runtime* runtime)
 }
 
 OpenCLPlatform::~OpenCLPlatform() {
+    // Clear device
     for (size_t i = 0; i < devices_.size(); i++) {
+        // Clear cache
+        for(const auto& p: devices_[i].kernel_launch_cache_) {
+            // release temporary buffers for struct arguments
+            for (uint32_t i = 0; i < p.second.size(); i++) {
+                if (p.second[i] != NULL) {
+                    cl_int err = clReleaseMemObject(p.second[i]);
+                    CHECK_OPENCL(err, "clReleaseMemObject()");
+                }
+            }
+        }
+
         if (devices_[i].is_intel_fpga || devices_[i].is_xilinx_fpga)
             continue;
 
@@ -365,16 +377,29 @@ void OpenCLPlatform::launch_kernel(DeviceId dev, const LaunchParams& launch_para
 
     auto kernel = load_kernel(dev, launch_params.file_name, launch_params.kernel_name);
 
+    auto queue = devices_[dev].queue;
+    if (devices_[dev].is_intel_fpga || devices_[dev].is_xilinx_fpga)
+        queue = devices_[dev].kernels_queue[kernel];
+
     // set up arguments
-    std::vector<cl_mem> kernel_structs(launch_params.num_args);
+    std::vector<cl_mem>& kernel_structs = devices_[dev].kernel_launch_cache_[launch_params.kernel_name];
+    if (kernel_structs.size() < launch_params.num_args)
+        kernel_structs.resize(launch_params.num_args, (cl_mem)NULL);
     for (uint32_t i = 0; i < launch_params.num_args; i++) {
         if (launch_params.args.types[i] == KernelArgType::Struct) {
-            // create a buffer for each structure argument
-            cl_int err = CL_SUCCESS;
-            cl_mem_flags flags = CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR;
-            cl_mem struct_buf = clCreateBuffer(devices_[dev].ctx, flags, launch_params.args.sizes[i], launch_params.args.data[i], &err);
-            CHECK_OPENCL(err, "clCreateBuffer()");
-            kernel_structs[i] = struct_buf;
+            // we are assuming the struct size for a specific kernel parameter does not change while running
+            if (kernel_structs[i] == NULL) {
+                // create a buffer for each structure argument
+                cl_int err = CL_SUCCESS;
+                cl_mem_flags flags = CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR;
+                cl_mem struct_buf = clCreateBuffer(devices_[dev].ctx, flags, launch_params.args.sizes[i], launch_params.args.data[i], &err);
+                CHECK_OPENCL(err, "clCreateBuffer()");
+                kernel_structs[i] = struct_buf;
+            } else {
+                // update buffer previously generated
+                cl_int err = clEnqueueWriteBuffer(queue, kernel_structs[i], CL_TRUE, 0, launch_params.args.sizes[i], launch_params.args.data[i], 0, NULL, NULL);
+                CHECK_OPENCL(err, "clEnqueueWriteBuffer()");
+            }
             clSetKernelArg(kernel, i, sizeof(cl_mem), &kernel_structs[i]);
         } else {
             #ifdef CL_VERSION_2_0
@@ -396,9 +421,6 @@ void OpenCLPlatform::launch_kernel(DeviceId dev, const LaunchParams& launch_para
 
     // launch the kernel
     cl_event event = 0;
-    auto queue = devices_[dev].queue;
-    if (devices_[dev].is_intel_fpga || devices_[dev].is_xilinx_fpga)
-        queue = devices_[dev].kernels_queue[kernel];
 
     if (devices_[dev].is_xilinx_fpga && global_work_size[0] == 1 && global_work_size[1] == 1 && global_work_size[2] == 1) {
         cl_int err = clEnqueueTask(queue, kernel, 0, NULL, &event);
@@ -419,14 +441,6 @@ void OpenCLPlatform::launch_kernel(DeviceId dev, const LaunchParams& launch_para
 
     if (runtime_->dynamic_profiling_enabled())
         dynamic_profile(dev, launch_params.file_name);
-
-    // release temporary buffers for struct arguments
-    for (uint32_t i = 0; i < launch_params.num_args; i++) {
-        if (launch_params.args.types[i] == KernelArgType::Struct) {
-            cl_int err = clReleaseMemObject(kernel_structs[i]);
-            CHECK_OPENCL(err, "clReleaseMemObject()");
-        }
-    }
 }
 
 void OpenCLPlatform::synchronize(DeviceId dev) {
@@ -535,7 +549,7 @@ cl_program OpenCLPlatform::load_program_source(DeviceId dev, const std::string& 
 
 cl_program OpenCLPlatform::compile_program(DeviceId dev, cl_program program, const std::string& filename) const {
     debug("Compiling '%' on OpenCL device %", filename, dev);
-    std::string options = "-cl-fast-relaxed-math";
+    std::string options = "-cl-fast-relaxed-math"; // TODO: Add option for the user
     options += " -cl-std=CL" + std::to_string(devices_[dev].version_major) + "." + std::to_string(devices_[dev].version_minor);
 
     cl_build_status build_status;
