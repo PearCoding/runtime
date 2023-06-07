@@ -1,39 +1,30 @@
-#ifndef DUMMY_PLATFORM_H
-#define DUMMY_PLATFORM_H
+#pragma once
 
 #include "platform.h"
 #include "runtime.h"
 
-#include <limits>
-
-/// Dummy platform, implemented
+namespace AnyDSLInternal {
+/// Dummy platform
 class DummyPlatform : public Platform {
 public:
-    DummyPlatform(Runtime* runtime, const std::string& name)
-        : Platform(runtime), name_(name)
-    {}
+    DummyPlatform(Runtime* runtime, const std::string& name, AnyDSLDeviceType type)
+        : Platform(runtime)
+        , mName(name)
+        , mType(type)
+    {
+    }
+
+    AnyDSLResult init() override { return AnyDSL_NOT_AVAILABLE; }
+
+    std::tuple<AnyDSLResult, Device*> get_device(const AnyDSLGetDeviceRequest*) override { return { AnyDSL_NOT_AVAILABLE, nullptr }; }
+    void append_device_infos(AnyDSLDeviceInfo*, size_t) override {}
+
+    std::string name() const override { return mName; }
+    size_t dev_count() const override { return 0; }
+    AnyDSLDeviceType type() const override { return mType; }
 
 protected:
-    void* alloc(DeviceId, int64_t) override { platform_error(); }
-    void* alloc_host(DeviceId, int64_t) override { platform_error(); }
-    void* alloc_unified(DeviceId, int64_t) override { platform_error(); }
-    void* get_device_ptr(DeviceId, void*) override { platform_error(); }
-    void release(DeviceId, void*) override { platform_error(); }
-    void release_host(DeviceId, void*) override { platform_error(); }
-
-    void launch_kernel(DeviceId, const LaunchParams&) override { platform_error(); }
-    void synchronize(DeviceId) override { platform_error(); }
-
-    void copy(DeviceId, const void*, int64_t, DeviceId, void*, int64_t, int64_t) override { platform_error(); }
-    void copy_from_host(const void*, int64_t, DeviceId, void*, int64_t, int64_t) override { platform_error(); }
-    void copy_to_host(DeviceId, const void*, int64_t, void*, int64_t, int64_t) override { platform_error(); }
-
-    size_t dev_count() const override { return 0; }
-    std::string name() const override { return name_; }
-    const char* device_name(DeviceId) const override { return "Dummy"; }
-    bool device_check_feature_support(DeviceId, const char*) const override { return false; }
-
-    std::string name_;
+    std::string mName;
+    AnyDSLDeviceType mType;
 };
-
-#endif
+} // namespace AnyDSLInternal

@@ -1,0 +1,103 @@
+// Utility stuff
+#[import(cc = "C", name = "anydsl_std_get_micro_time")] fn get_micro_time() -> i64;
+#[import(cc = "C", name = "anydsl_std_get_nano_time")]  fn get_nano_time() -> i64;
+
+#[import(cc = "C", name = "anydsl_std_print_i16")]    fn print_i16(_: i16) -> ();
+#[import(cc = "C", name = "anydsl_std_print_i32")]    fn print_i32(_: i32) -> ();
+#[import(cc = "C", name = "anydsl_std_print_i64")]    fn print_i64(_: i64) -> ();
+#[import(cc = "C", name = "anydsl_std_print_u16")]    fn print_u16(_: u16) -> ();
+#[import(cc = "C", name = "anydsl_std_print_u32")]    fn print_u32(_: u32) -> ();
+#[import(cc = "C", name = "anydsl_std_print_u64")]    fn print_u64(_: u64) -> ();
+#[import(cc = "C", name = "anydsl_std_print_f32")]    fn print_f32(_: f32) -> ();
+#[import(cc = "C", name = "anydsl_std_print_f64")]    fn print_f64(_: f64) -> ();
+#[import(cc = "C", name = "anydsl_std_print_char")]   fn print_char(_: u8) -> ();
+#[import(cc = "C", name = "anydsl_std_print_string")] fn print_string(_: &[u8]) -> ();
+#[import(cc = "C", name = "anydsl_std_print_flush")]  fn print_flush() -> ();
+
+// Subset of the C interface ported to ours
+#[import(cc = "C", name = "anydsl_std_get_version")]  fn anydsl_get_version(_major: &mut i32, _minor: &mut i32, _patch: &mut i32) -> ();
+
+// Basic device management
+// TODO: Missing quite something
+#[import(cc = "C", name = "anydsl_std_get_device")]  fn anydsl_get_device(_platform: i32, _device: i32) -> u64;
+#[import(cc = "C", name = "anydsl_std_synchronize")] fn anydsl_synchronize(_device: u64) -> ();
+
+// Buffer management
+#[import(cc = "C", name = "anydsl_std_create_buffer")]  fn anydsl_create_buffer(_device: u64, _size: i64, _flags: i32) -> u64;
+#[import(cc = "C", name = "anydsl_std_destroy_buffer")] fn anydsl_destroy_buffer(_buffer: u64) -> ();
+#[import(cc = "C", name = "anydsl_std_get_device_ptr")] fn anydsl_get_device_ptr(_buffer: u64) -> &[i8];
+#[import(cc = "C", name = "anydsl_std_copy_buffer")]    fn anydsl_copy_buffer(_bufferSrc: u64, _offsetSrc: i64, _bufferDst: u64, _offsetDst: i64, _size: i64) -> ();
+#[import(cc = "C", name = "anydsl_std_fill_buffer")]    fn anydsl_fill_buffer(_value: u32, _bufferDst: u64, _offsetDst: i64, _size: i64) -> ();
+#[import(cc = "C", name = "anydsl_std_update_buffer")]  fn anydsl_update_buffer(_ptr: &[u8], _bufferDst: u64, _offsetDst: i64, _size: i64) -> ();
+
+struct Buffer {
+    size : i64,
+    id   : u64
+}
+
+fn @alloc(device: u64, size: i64) = Buffer {
+    id   = anydsl_create_buffer(device, size, 0x0),
+    size = size
+};
+fn @alloc_host(device: u64, size: i64) = Buffer {
+    id   = anydsl_create_buffer(device, size, 0x1),
+    size = size,
+};
+fn @alloc_unified(device: u64, size: i64) = Buffer {
+    id   = anydsl_create_buffer(device, size, 0x2),
+    size = size,
+};
+fn @release(buf: Buffer) = anydsl_destroy_buffer(buf.id);
+
+fn @alloc_cpu(size: i64) = alloc(anydsl_get_device(0, 0), size);
+fn @alloc_cuda(dev: i32, size: i64) = alloc(anydsl_get_device(1, dev), size);
+fn @alloc_cuda_host(dev: i32, size: i64) = alloc_host(anydsl_get_device(1, dev), size);
+fn @alloc_cuda_unified(dev: i32, size: i64) = alloc_unified(anydsl_get_device(1, dev), size);
+fn @synchronize_cuda(dev: i32) = anydsl_synchronize(anydsl_get_device(1, dev));
+fn @alloc_opencl(dev: i32, size: i64) = alloc(anydsl_get_device(2, dev), size);
+fn @alloc_opencl_unified(dev: i32, size: i64) = alloc_unified(anydsl_get_device(2, dev), size);
+fn @synchronize_opencl(dev: i32) = anydsl_synchronize(anydsl_get_device(2, dev));
+fn @alloc_hls(dev: i32, size: i64) -> Buffer { alloc(anydsl_get_device(2, dev), size) }
+fn @alloc_hls_unified(dev: i32, size: i64) -> Buffer { alloc_unified(anydsl_get_device(2, dev), size) }
+fn @synchronize_hls(dev: i32) -> () { anydsl_synchronize(anydsl_get_device(2, dev)) }
+fn @alloc_hsa(dev: i32, size: i64) = alloc(anydsl_get_device(3, dev), size);
+fn @alloc_hsa_host(dev: i32, size: i64) = alloc_host(anydsl_get_device(3, dev), size);
+fn @alloc_hsa_unified(dev: i32, size: i64) = alloc_unified(anydsl_get_device(3, dev), size);
+fn @synchronize_hsa(dev: i32) = anydsl_synchronize(anydsl_get_device(3, dev));
+
+fn @copy_offset(src: Buffer, off_src: i64, dst: Buffer, off_dst: i64, size: i64) = anydsl_copy_buffer(src.id, off_src, dst.id, off_dst, size);
+fn @copy(src: Buffer, dst: Buffer) = copy_offset(src, 0, dst, 0, src.size);
+
+fn @fill_buffer_offset(value: u32, dst: Buffer, off_dst: i64, count: i64) = anydsl_fill_buffer(value, dst.id, off_dst, count);
+fn @fill_buffer(value: u32, dst: Buffer) = fill_buffer_offset(value, dst, 0, dst.size / sizeof[u32]());
+fn @copy_from_host(src: &[u8], size: i64, dst: Buffer) = anydsl_update_buffer(src, dst.id, 0, size);
+
+// Range and similar stuff
+
+// range, range_step, unroll, unroll_step, etc.
+fn @unroll_step(body: fn(i32) -> ()) {
+    fn @(?beg & ?end & ?step) loop(beg: i32, end: i32, step: i32) -> () {
+        if beg < end {
+            @body(beg);
+            loop(beg + step, end, step)
+        }
+    }
+    loop
+}
+
+fn @unroll_step_rev(body: fn(i32) -> ()) {
+    fn @(?beg & ?end & ?step) loop(end: i32, beg: i32, step: i32) -> () {
+        if end > beg {
+            @body(end);
+            loop(end - step, beg, step)
+        }
+    }
+    loop
+}
+
+fn @range(body: fn(i32) -> ()) = @|lower: i32, upper: i32| unroll_step(body)($lower, $upper, 1);
+fn @range_step(body: fn(i32) -> ()) = @|lower: i32, upper: i32, step: i32| unroll_step(body)($lower, $upper, step);
+fn @range_rev(body: fn(i32) -> ()) = @|upper: i32, lower: i32| unroll_step_rev(body)(upper, lower, 1);
+
+fn @unroll(body: fn(i32) -> ()) = @|lower: i32, upper: i32| unroll_step(body)(lower, upper, 1);
+fn @unroll_rev(body: fn(i32) -> ()) = @|upper: i32, lower: i32| unroll_step_rev(body)(upper, lower, 1);

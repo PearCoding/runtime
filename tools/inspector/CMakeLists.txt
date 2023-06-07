@@ -1,0 +1,2 @@
+add_executable(anydsl_inspector main.cpp)
+target_link_libraries(anydsl_inspector runtime)

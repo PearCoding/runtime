@@ -197,8 +197,6 @@ function(anydsl_runtime_wrap outfiles)
         message(FATAL_ERROR "Unparsed arguments ${PARGS_UNPARSED_ARGUMENTS}")
     endif()
 
-    set(_additional_platform_files)
-
     if(NOT PARGS_FRONTEND)
         set(_frontend "impala")
     else()
@@ -212,7 +210,6 @@ function(anydsl_runtime_wrap outfiles)
         endif()
         set(_frontend_flags ${PARGS_ARTIC_FLAGS} ${OPT_FLAGS})
         set(_frontend_bin ${Artic_BIN})
-        list(APPEND _additional_platform_files "${AnyDSL_runtime_ROOT_DIR}/platforms/artic/intrinsics_math.impala")
     endif()
 
     if(${_frontend} STREQUAL "impala")
@@ -263,18 +260,7 @@ function(anydsl_runtime_wrap outfiles)
     set(_cfile ${_basepath}.c)
     set(_objfile ${_basepath}.o)
 
-    set(_frontend_platform_files
-        ${AnyDSL_runtime_ROOT_DIR}/platforms/${_frontend}/intrinsics.impala
-        ${AnyDSL_runtime_ROOT_DIR}/platforms/${_frontend}/intrinsics_rv.impala
-        ${AnyDSL_runtime_ROOT_DIR}/platforms/${_frontend}/intrinsics_cpu.impala
-        ${AnyDSL_runtime_ROOT_DIR}/platforms/${_frontend}/intrinsics_hls.impala
-        ${AnyDSL_runtime_ROOT_DIR}/platforms/${_frontend}/intrinsics_cuda.impala
-        ${AnyDSL_runtime_ROOT_DIR}/platforms/${_frontend}/intrinsics_nvvm.impala
-        ${AnyDSL_runtime_ROOT_DIR}/platforms/${_frontend}/intrinsics_amdgpu.impala
-        ${AnyDSL_runtime_ROOT_DIR}/platforms/${_frontend}/intrinsics_opencl.impala
-        ${AnyDSL_runtime_ROOT_DIR}/platforms/${_frontend}/intrinsics_thorin.impala
-        ${AnyDSL_runtime_ROOT_DIR}/platforms/${_frontend}/runtime.impala
-        ${_additional_platform_files})
+    file(GLOB _frontend_platform_files ${AnyDSL_runtime_ROOT_DIR}/platforms/${_frontend}/*)
 
     if(NOT MSVC)
         list(APPEND _clang_flags -fPIE)

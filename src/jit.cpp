@@ -1,5 +1,5 @@
-#include <memory>
 #include <fstream>
+#include <memory>
 #include <sstream>
 
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
@@ -7,19 +7,23 @@
 #include <llvm/ExecutionEngine/RuntimeDyld.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IRReader/IRReader.h>
-#include <llvm/Support/raw_os_ostream.h>
-#include <llvm/Support/Host.h>
 #include <llvm/Support/DynamicLibrary.h>
+#include <llvm/Support/Host.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/TargetSelect.h>
+#include <llvm/Support/raw_os_ostream.h>
 
 #include <thorin/be/codegen.h>
 #include <thorin/be/llvm/cpu.h>
 #include <thorin/world.h>
 
-#include "anydsl_jit.h"
+#include "cache.h"
+#include "jit.h"
 #include "log.h"
 #include "runtime.h"
+#include "utils.h"
+
+// NOTE: This file is only compiled if jit is turned ON
 
 bool compile(
     const std::vector<std::string>& file_names,
@@ -27,27 +31,34 @@ bool compile(
     thorin::World& world,
     std::ostream& error_stream);
 
+namespace AnyDSLInternal {
 static const char runtime_srcs[] = {
 #include "runtime_srcs.inc"
-0
+    0
 };
 
-struct JIT {
+struct JITSingleton {
     struct Program {
-        Program(llvm::ExecutionEngine* engine) : engine(engine) {}
+        Program(llvm::ExecutionEngine* engine)
+            : engine(engine)
+        {
+        }
         llvm::ExecutionEngine* engine;
     };
 
-    std::vector<Program> programs;
-    Runtime* runtime;
-    thorin::LogLevel log_level;
+    std::vector<Program> mPrograms;
 
-    JIT(Runtime* runtime) : runtime(runtime), log_level(thorin::LogLevel::Warn) {
+    JITSingleton()
+    {
         llvm::InitializeNativeTarget();
         llvm::InitializeNativeTargetAsmPrinter();
     }
 
-    int32_t compile(const char* program_src, uint32_t size, uint32_t opt) {
+    size_t compile(const char* program_src, uint32_t size, const AnyDSLJITCompileOptions* pOptions, AnyDSLJITCompileResult* pResult)
+    {
+        uint32_t opt               = pOptions->optLevel;
+        thorin::LogLevel log_level = pOptions->logLevel <= 4 ? static_cast<thorin::LogLevel>(pOptions->logLevel) : thorin::LogLevel::Warn;
+
         // The LLVM context and module have to be alive for the duration of this function
         std::unique_ptr<llvm::LLVMContext> llvm_context;
         std::unique_ptr<llvm::Module> llvm_module;
@@ -56,19 +67,20 @@ struct JIT {
         std::stringstream hex_stream;
         hex_stream << std::hex << prog_key;
         std::string program_str = std::string(program_src, size);
-        std::string cached_llvm = runtime->load_from_cache(program_str, ".llvm");
+        std::string cached_llvm = Cache::instance().load_from_cache(program_str, ".llvm");
         std::string module_name = "jit_" + hex_stream.str();
         if (cached_llvm.empty()) {
             bool debug = false;
-            assert(opt <= 3);
+            assert(pOptions->optLevel <= 3);
 
+            std::stringstream err_stream;
             thorin::World world(module_name);
             world.set(log_level);
-            world.set(std::make_shared<thorin::Stream>(std::cerr));
+            world.set(std::make_shared<thorin::Stream>(err_stream));
             if (!::compile(
-                { "runtime", module_name },
-                { std::string(runtime_srcs), program_str },
-                world, std::cerr))
+                    { "runtime", module_name },
+                    { std::string(runtime_srcs), program_str },
+                    world, err_stream))
                 error("JIT: error while compiling sources");
 
             world.opt();
@@ -81,7 +93,7 @@ struct JIT {
             std::stringstream stream;
             llvm::raw_os_ostream llvm_stream(stream);
             llvm_module->print(llvm_stream, nullptr);
-            runtime->store_to_cache(program_str, stream.str(), ".llvm");
+            Cache::instance().store_to_cache(program_str, stream.str(), ".llvm");
 
             if (backends.cgs[thorin::DeviceBackends::HLS])
                 error("JIT compilation of hls not supported!");
@@ -89,19 +101,44 @@ struct JIT {
                 if (cg) {
                     std::ostringstream stream;
                     cg->emit_stream(stream);
-                    runtime->store_to_cache(cg->file_ext() + program_str, stream.str(), cg->file_ext());
-                    runtime->register_file(module_name + cg->file_ext(), stream.str());
+                    Cache::instance().store_to_cache(cg->file_ext() + program_str, stream.str(), cg->file_ext());
+                    Cache::instance().register_file(module_name + cg->file_ext(), stream.str());
+                }
+            }
+
+            if (pResult != nullptr) {
+                std::string err = err_stream.str();
+                if (!err.empty()) {
+                    pResult->pLogOutput = new char[err.size() + 1];
+                    std::memcpy(pResult->pLogOutput, err.data(), err.size() * sizeof(char));
+                    pResult->pLogOutput[err.size()] = '\0';
+                } else {
+                    pResult->pLogOutput = nullptr;
                 }
             }
         } else {
             llvm::SMDiagnostic diagnostic_err;
             llvm_context = std::make_unique<llvm::LLVMContext>();
-            llvm_module = llvm::parseIR(llvm::MemoryBuffer::getMemBuffer(cached_llvm)->getMemBufferRef(), diagnostic_err, *llvm_context);
+            llvm_module  = llvm::parseIR(llvm::MemoryBuffer::getMemBuffer(cached_llvm)->getMemBufferRef(), diagnostic_err, *llvm_context);
+
+            if (pResult != nullptr) {
+                std::string tmp;
+                auto stream = llvm::raw_string_ostream(tmp);
+                diagnostic_err.print(module_name.c_str(), stream, false, true);
+
+                if (!tmp.empty()) {
+                    pResult->pLogOutput = new char[tmp.size() + 1];
+                    std::memcpy(pResult->pLogOutput, tmp.data(), tmp.size() * sizeof(char));
+                    pResult->pLogOutput[tmp.size()] = '\0';
+                } else {
+                    pResult->pLogOutput = nullptr;
+                }
+            }
 
             auto load_backend_src = [&](std::string ext) {
-                std::string cached_src = runtime->load_from_cache(ext + program_str, ext);
+                std::string cached_src = Cache::instance().load_from_cache(ext + program_str, ext);
                 if (!cached_src.empty())
-                    runtime->register_file(module_name + ext, cached_src);
+                    Cache::instance().register_file(module_name + ext, cached_src);
             };
             load_backend_src(".cl");
             load_backend_src(".cu");
@@ -109,66 +146,132 @@ struct JIT {
             load_backend_src(".amdgpu");
         }
 
-        llvm::TargetOptions options;
-        options.AllowFPOpFusion = llvm::FPOpFusion::Fast;
+        llvm::TargetOptions target_options;
+        target_options.AllowFPOpFusion = llvm::FPOpFusion::Fast;
 
         auto engine = llvm::EngineBuilder(std::move(llvm_module))
-            .setEngineKind(llvm::EngineKind::JIT)
-            .setMCPU(llvm::sys::getHostCPUName())
-            .setTargetOptions(options)
-            .setOptLevel(   opt == 0  ? llvm::CodeGenOpt::None    :
-                            opt == 1  ? llvm::CodeGenOpt::Less    :
-                            opt == 2  ? llvm::CodeGenOpt::Default :
-                        /* opt == 3 */ llvm::CodeGenOpt::Aggressive)
-            .create();
+                          .setEngineKind(llvm::EngineKind::JIT)
+                          .setMCPU(llvm::sys::getHostCPUName())
+                          .setTargetOptions(target_options)
+                          .setOptLevel(opt == 0 ? llvm::CodeGenOpt::None : opt == 1 ? llvm::CodeGenOpt::Less
+                                                                       : opt == 2   ? llvm::CodeGenOpt::Default
+                                                                                    :
+                                                                                  /* opt == 3 */ llvm::CodeGenOpt::Aggressive)
+                          .create();
         if (!engine)
             return -1;
 
         engine->finalizeObject();
-        programs.push_back(Program(engine));
+        mPrograms.push_back(Program(engine));
 
-        return (int32_t)programs.size() - 1;
+        return mPrograms.size() - 1;
     }
 
-    void* lookup_function(int32_t key, const char* fn_name) {
-        if (key == -1)
+    void* lookup_function(size_t key, const char* fn_name)
+    {
+        if (key >= mPrograms.size())
             return nullptr;
 
-        return (void *)programs[key].engine->getFunctionAddress(fn_name);
+        return (void*)mPrograms[key].engine->getFunctionAddress(fn_name);
     }
 
-    void link(const char* lib) {
+    void link(const char* lib)
+    {
+        // TODO: Would be nice to have it per module. But I guess LLVM does not allow it.
         llvm::sys::DynamicLibrary::LoadLibraryPermanently(lib);
     }
+
+    bool check_key(size_t key) const { return key < mPrograms.size(); }
 };
 
-JIT& jit() {
-    static std::unique_ptr<JIT> jit(new JIT(&runtime()));
-    return *jit;
+JITSingleton& jit()
+{
+    static JITSingleton jit;
+    return jit;
 }
 
-void anydsl_set_cache_directory(const char* dir) {
-    jit().runtime->set_cache_directory(dir == nullptr ? std::string() : dir);
+static inline size_t unwrapModule(AnyDSLJITModule module) { return (size_t)(uintptr_t)module; }
+
+AnyDSLResult JIT::compile(const char* program, size_t size, AnyDSLJITModule* pModule, const AnyDSLJITCompileOptions* pOptions, AnyDSLJITCompileResult* pResult)
+{
+    if (size == 0)
+        return AnyDSL_INVALID_VALUE;
+    ANYDSL_CHECK_RET_PTR(program);
+    ANYDSL_CHECK_RET_PTR(pModule);
+
+    ANYDSL_CHECK_RET_TYPE(pOptions, AnyDSL_STRUCTURE_TYPE_JIT_COMPILE_OPTIONS);
+    if (pResult != nullptr)
+        ANYDSL_CHECK_RET_TYPE(pResult, AnyDSL_STRUCTURE_TYPE_JIT_COMPILE_RESULT);
+
+    if (pOptions->optLevel > 3) // Only allow proper defined levels
+        return AnyDSL_INVALID_VALUE;
+    if (pOptions->logLevel > 4) // Only allow proper defined levels
+        return AnyDSL_INVALID_VALUE;
+
+    size_t key = jit().compile(program, size, pOptions, pResult);
+
+    *pModule = (AnyDSLJITModule)key;
+
+    return AnyDSL_SUCCESS;
 }
 
-const char* anydsl_get_cache_directory() {
-    static std::string dir;
-    dir = jit().runtime->get_cache_directory();
-    return dir.c_str();
+AnyDSLResult JIT::destroyModule(AnyDSLJITModule module)
+{
+    if (!jit().check_key(unwrapModule(module)))
+        return AnyDSL_INVALID_HANDLE;
+
+    // TODO: Make use of it
+    return AnyDSL_SUCCESS;
 }
 
-void anydsl_link(const char* lib) {
-    jit().link(lib);
+AnyDSLResult JIT::freeCompileResult(const AnyDSLJITCompileResult* pResult)
+{
+    if (pResult == nullptr)
+        return AnyDSL_SUCCESS;
+
+    ANYDSL_CHECK_RET_TYPE(pResult, AnyDSL_STRUCTURE_TYPE_JIT_COMPILE_RESULT);
+
+    if (pResult->pLogOutput != nullptr)
+        delete[] pResult->pLogOutput;
+
+    return AnyDSL_SUCCESS;
 }
 
-int32_t anydsl_compile(const char* program, uint32_t size, uint32_t opt) {
-    return jit().compile(program, size, opt);
+AnyDSLResult JIT::lookup(AnyDSLJITModule module, const char* function, AnyDSLJITLookupInfo* pInfo)
+{
+    if (!jit().check_key(unwrapModule(module)))
+        return AnyDSL_INVALID_HANDLE;
+
+    ANYDSL_CHECK_RET_PTR(function);
+    ANYDSL_CHECK_RET_TYPE(pInfo, AnyDSL_STRUCTURE_TYPE_JIT_LOOKUP_INFO);
+
+    void* func = jit().lookup_function(unwrapModule(module), function);
+
+    if (func == nullptr)
+        return AnyDSL_JIT_NO_FUNCTION;
+
+    pInfo->pHandle = func;
+
+    return AnyDSL_SUCCESS;
 }
 
-void anydsl_set_log_level(uint32_t log_level) {
-    jit().log_level = log_level <= 4 ? static_cast<thorin::LogLevel>(log_level) : thorin::LogLevel::Warn;
+AnyDSLResult JIT::link(AnyDSLJITModule module, size_t count, const AnyDSLJITLinkInfo* pLinkInfo)
+{
+    if (!jit().check_key(unwrapModule(module)))
+        return AnyDSL_INVALID_HANDLE;
+
+    if (count == 0)
+        return AnyDSL_INVALID_VALUE;
+
+    for (size_t i = 0; i < count; ++i) {
+        ANYDSL_CHECK_RET_TYPE(pLinkInfo, AnyDSL_STRUCTURE_TYPE_JIT_LINK_INFO);
+
+        jit().link(pLinkInfo->pLibraryFilename);
+
+        ++pLinkInfo;
+    }
+
+    return AnyDSL_SUCCESS;
 }
 
-void* anydsl_lookup_function(int32_t key, const char* fn_name) {
-    return jit().lookup_function(key, fn_name);
-}
+} // namespace AnyDSLInternal

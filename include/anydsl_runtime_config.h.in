@@ -1,0 +1,37 @@
+#ifndef ANYDSL_RUNTIME_CONFIG_H
+#define ANYDSL_RUNTIME_CONFIG_H
+
+// AnyDSL runtime feature support
+
+#cmakedefine AnyDSL_runtime_BUILD_SHARED
+
+#if defined(AnyDSL_runtime_BUILD_SHARED)
+#  ifdef _MSC_VER
+#    define __dll_import __declspec(dllimport)
+#    define __dll_export __declspec(dllexport)
+#  else  // _MSC_VER
+#    define __dll_import __attribute__((visibility("default")))
+#    define __dll_export __attribute__((visibility("default")))
+#  endif // _MSC_VER
+#  ifdef AnyDSL_runtime_EXPORTS
+#    define AnyDSL_runtime_API __dll_export
+#  else  // AnyDSL_runtime_EXPORTS
+#    define AnyDSL_runtime_API __dll_import
+#  endif // AnyDSL_runtime_EXPORTS
+#else  // AnyDSL_runtime_BUILD_SHARED
+#  define AnyDSL_runtime_API
+#endif // AnyDSL_runtime_BUILD_SHARED
+
+#if defined(_WIN32)
+    // On Windows, AnyDSL commands use the stdcall convention
+    #define ANYDSL_API_ATTR
+    #define ANYDSL_API_CALL __stdcall
+    #define ANYDSL_API_PTR  ANYDSL_API_CALL
+#else
+    // On other platforms, use the default calling convention
+    #define ANYDSL_API_ATTR
+    #define ANYDSL_API_CALL
+    #define ANYDSL_API_PTR
+#endif
+
+#endif // ANYDSL_RUNTIME_CONFIG_H

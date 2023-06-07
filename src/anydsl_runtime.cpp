@@ -1,341 +1,309 @@
-#include <random>
-#include <chrono>
-#include <locale>
-#include <mutex>
-#include <sstream>
-
 #include "anydsl_runtime.h"
-// Make sure the definition for runtime() matches
-// the declaration in anydsl_jit.h
-#include "anydsl_jit.h"
+#include "anydsl_runtime_internal_config.h"
 
-#include "runtime.h"
+#include "buffer.h"
+#include "device.h"
+#include "event.h"
+#include "log.h"
+#include "utils.h"
+
+#include "jit.h"
+
+#include "host/cpu_platform.h"
 #include "platform.h"
-#include "dummy_platform.h"
-#include "cpu_platform.h"
+#include "runtime.h"
 
-#ifdef AnyDSL_runtime_HAS_TBB_SUPPORT
-#define NOMINMAX
-#include <tbb/parallel_for.h>
-#include <tbb/task_arena.h>
-#include <tbb/task_group.h>
-#include <tbb/concurrent_unordered_map.h>
-#include <tbb/concurrent_queue.h>
+using namespace AnyDSLInternal;
+
+static inline bool checkHandle(void* ptr) { return ptr != nullptr; }
+
+static inline Device* unwrapDeviceHandle(AnyDSLDevice device) { return (Device*)device; }
+static inline Buffer* unwrapBufferHandle(AnyDSLBuffer buffer) { return (Buffer*)buffer; }
+static inline Event* unwrapEventHandle(AnyDSLEvent event) { return (Event*)event; }
+
+// ----------------------------------------- Runtime
+AnyDSLResult anydslGetVersion(AnyDSLVersion* pVersion)
+{
+    ANYDSL_CHECK_RET_PTR(pVersion);
+
+    // TODO
+    pVersion->major = 2;
+    pVersion->minor = 0;
+    pVersion->patch = 0;
+
+    return AnyDSL_SUCCESS;
+}
+
+AnyDSLResult anydslGetFeatures(AnyDSLFeatures* pFeatures)
+{
+    ANYDSL_CHECK_RET_PTR(pFeatures);
+
+#ifdef AnyDSL_runtime_HAS_JIT_SUPPORT
+    pFeatures->bHasJIT = AnyDSL_TRUE;
 #else
-#include <thread>
+    pFeatures->bHasJIT = AnyDSL_FALSE;
 #endif
 
-struct RuntimeSingleton {
-    Runtime runtime;
-
-    RuntimeSingleton()
-        : runtime(detect_profile_level())
-    {
-        runtime.register_platform<CpuPlatform>();
-        register_cuda_platform(&runtime);
-        register_opencl_platform(&runtime);
-        register_hsa_platform(&runtime);
-    }
-
-    static std::pair<ProfileLevel, ProfileLevel> detect_profile_level() {
-        auto profile = std::make_pair(ProfileLevel::None, ProfileLevel::None);
-        const char* env_var = std::getenv("ANYDSL_PROFILE");
-        if (env_var) {
-            std::string env_str = env_var;
-            for (auto& c: env_str)
-                c = std::toupper(c, std::locale());
-            std::stringstream profile_levels(env_str);
-            std::string level;
-            while (profile_levels >> level) {
-                if (level == "FULL")
-                    profile.first = ProfileLevel::Full;
-                else if (level == "FPGA_DYNAMIC")
-                    profile.second = ProfileLevel::Fpga_dynamic;
-            }
-        }
-        return profile;
-    }
-};
-
-Runtime& runtime() {
-    static RuntimeSingleton singleton;
-    return singleton.runtime;
-}
-
-inline PlatformId to_platform(int32_t m) {
-    return PlatformId(m & 0x0F);
-}
-
-inline DeviceId to_device(int32_t m) {
-    return DeviceId(m >> 4);
-}
-
-void anydsl_info(void) {
-    runtime().display_info();
-}
-
-const char* anydsl_device_name(int32_t mask) {
-    return runtime().device_name(to_platform(mask), to_device(mask));
-}
-
-bool anydsl_device_check_feature_support(int32_t mask, const char* feature) {
-    return runtime().device_check_feature_support(to_platform(mask), to_device(mask), feature);
-}
-
-void* anydsl_alloc(int32_t mask, int64_t size) {
-    return runtime().alloc(to_platform(mask), to_device(mask), size);
-}
-
-void* anydsl_alloc_host(int32_t mask, int64_t size) {
-    return runtime().alloc_host(to_platform(mask), to_device(mask), size);
-}
-
-void* anydsl_alloc_unified(int32_t mask, int64_t size) {
-    return runtime().alloc_unified(to_platform(mask), to_device(mask), size);
-}
-
-void* anydsl_get_device_ptr(int32_t mask, void* ptr) {
-    return runtime().get_device_ptr(to_platform(mask), to_device(mask), ptr);
-}
-
-void anydsl_release(int32_t mask, void* ptr) {
-    runtime().release(to_platform(mask), to_device(mask), ptr);
-}
-
-void anydsl_release_host(int32_t mask, void* ptr) {
-    runtime().release_host(to_platform(mask), to_device(mask), ptr);
-}
-
-void anydsl_copy(
-    int32_t mask_src, const void* src, int64_t offset_src,
-    int32_t mask_dst, void* dst, int64_t offset_dst, int64_t size) {
-    runtime().copy(
-        to_platform(mask_src), to_device(mask_src), src, offset_src,
-        to_platform(mask_dst), to_device(mask_dst), dst, offset_dst, size);
-}
-
-void anydsl_launch_kernel(
-    int32_t mask, const char* file_name, const char* kernel_name,
-    const uint32_t* grid, const uint32_t* block,
-    void** arg_data,
-    const uint32_t* arg_sizes,
-    const uint32_t* arg_aligns,
-    const uint32_t* arg_alloc_sizes,
-    const uint8_t* arg_types,
-    uint32_t num_args) {
-    LaunchParams launch_params = {
-        file_name,
-        kernel_name,
-        grid,
-        block,
-        {
-            arg_data,
-            arg_sizes,
-            arg_aligns,
-            arg_alloc_sizes,
-            reinterpret_cast<const KernelArgType*>(arg_types),
-        },
-        num_args
-    };
-    runtime().launch_kernel(to_platform(mask), to_device(mask), launch_params);
-}
-
-void anydsl_synchronize(int32_t mask) {
-    runtime().synchronize(to_platform(mask), to_device(mask));
-}
-
-uint64_t anydsl_get_micro_time() {
-    using namespace std::chrono;
-    return duration_cast<microseconds>(steady_clock::now().time_since_epoch()).count();
-}
-
-uint64_t anydsl_get_nano_time() {
-    using namespace std::chrono;
-    return duration_cast<nanoseconds>(steady_clock::now().time_since_epoch()).count();
-}
-
-uint64_t anydsl_get_kernel_time() {
-    return runtime().kernel_time().load();
-}
-
-int32_t anydsl_isinff(float x)    { return std::isinf(x); }
-int32_t anydsl_isnanf(float x)    { return std::isnan(x); }
-int32_t anydsl_isfinitef(float x) { return std::isfinite(x); }
-int32_t anydsl_isinf(double x)    { return std::isinf(x); }
-int32_t anydsl_isnan(double x)    { return std::isnan(x); }
-int32_t anydsl_isfinite(double x) { return std::isfinite(x); }
-
-void anydsl_print_i16(int16_t s)  { std::cout << s; }
-void anydsl_print_i32(int32_t i)  { std::cout << i; }
-void anydsl_print_i64(int64_t l)  { std::cout << l; }
-void anydsl_print_u16(uint16_t s) { std::cout << s; }
-void anydsl_print_u32(uint32_t i) { std::cout << i; }
-void anydsl_print_u64(uint64_t l) { std::cout << l; }
-void anydsl_print_f32(float f)    { std::cout << f; }
-void anydsl_print_f64(double d)   { std::cout << d; }
-void anydsl_print_char(char c)    { std::cout << c; }
-void anydsl_print_string(char* s) { std::cout << s; }
-void anydsl_print_flush()         { std::cout << std::flush; }
-
-void* anydsl_aligned_malloc(size_t size, size_t align) {
-    return Runtime::aligned_malloc(size, align);
-}
-
-void anydsl_aligned_free(void* ptr) {
-    return Runtime::aligned_free(ptr);
-}
-
-#ifndef __has_feature
-#define __has_feature(x) 0
+    pFeatures->supportedLanguages = 0;
+#ifdef AnyDSL_runtime_HAS_ARTIC_LANGUAGE
+    pFeatures->supportedLanguages |= AnyDSL_COMPILE_LANGUAGE_ARTIC_BIT;
 #endif
-#if (defined (__clang__) && !__has_feature(cxx_thread_local))
-#pragma message("Runtime random function is not thread-safe")
-static std::mt19937 std_gen;
-#else
-static thread_local std::mt19937 std_gen;
+
+#ifdef AnyDSL_runtime_HAS_IMPALA_LANGUAGE
+    pFeatures->supportedLanguages |= AnyDSL_COMPILE_LANGUAGE_IMPALA_BIT;
 #endif
-static std::uniform_real_distribution<float>   std_dist_f32;
-static std::uniform_int_distribution<uint64_t> std_dist_u64;
 
-void anydsl_random_seed(uint32_t seed) {
-    std_gen.seed(seed);
+    return AnyDSL_SUCCESS;
 }
 
-float anydsl_random_val_f32() {
-    return std_dist_f32(std_gen);
-}
+AnyDSLResult anydslEnumerateDevices(size_t* pCount, AnyDSLDeviceInfo* pInfo)
+{
+    ANYDSL_CHECK_RET_PTR(pCount);
 
-uint64_t anydsl_random_val_u64() {
-    return std_dist_u64(std_gen);
-}
-
-#ifndef AnyDSL_runtime_HAS_TBB_SUPPORT // C++11 threads version
-static std::unordered_map<int32_t, std::thread> thread_pool;
-static std::vector<int32_t> free_ids;
-static std::mutex thread_lock;
-
-void anydsl_parallel_for(int32_t num_threads, int32_t lower, int32_t upper, void* args, void* fun) {
-    // Get number of available hardware threads
-    if (num_threads == 0) {
-        num_threads = std::thread::hardware_concurrency();
-        // hardware_concurrency is implementation defined, may return 0
-        num_threads = (num_threads == 0) ? 1 : num_threads;
-    }
-
-    void (*fun_ptr) (void*, int32_t, int32_t) = reinterpret_cast<void (*) (void*, int32_t, int32_t)>(fun);
-    const int32_t linear = (upper - lower) / num_threads;
-
-    // Create a pool of threads to execute the task
-    std::vector<std::thread> pool(num_threads);
-
-    for (int i = 0, a = lower, b = lower + linear; i < num_threads - 1; a = b, b += linear, i++) {
-        pool[i] = std::thread([=]() {
-            fun_ptr(args, a, b);
-        });
-    }
-
-    pool[num_threads - 1] = std::thread([=]() {
-        fun_ptr(args, lower + (num_threads - 1) * linear, upper);
-    });
-
-    // Wait for all the threads to finish
-    for (int i = 0; i < num_threads; i++)
-        pool[i].join();
-}
-
-int32_t anydsl_spawn_thread(void* args, void* fun) {
-    std::lock_guard<std::mutex> lock(thread_lock);
-
-    int32_t (*fun_ptr) (void*) = reinterpret_cast<int32_t (*) (void*)>(fun);
-
-    int32_t id;
-    if (free_ids.size()) {
-        id = free_ids.back();
-        free_ids.pop_back();
-    } else {
-        id = static_cast<int32_t>(thread_pool.size());
-    }
-
-    auto spawned = std::make_pair(id, std::thread([=](){ fun_ptr(args); }));
-    thread_pool.emplace(std::move(spawned));
-    return id;
-}
-
-void anydsl_sync_thread(int32_t id) {
-    auto thread = thread_pool.end();
-    {
-        std::lock_guard<std::mutex> lock(thread_lock);
-        thread = thread_pool.find(id);
-    }
-    if (thread != thread_pool.end()) {
-        thread->second.join();
-        {
-            std::lock_guard<std::mutex> lock(thread_lock);
-            free_ids.push_back(thread->first);
-            thread_pool.erase(thread);
+    if (pInfo == nullptr) {
+        // Compute count
+        for (size_t i = 0; i < Runtime::instance().platforms().size(); ++i) {
+            Platform* platform = Runtime::instance().platforms()[i].get();
+            *pCount += (size_t)platform->dev_count();
         }
     } else {
-        assert(0 && "Trying to synchronize on invalid thread id");
-    }
-}
-#else // TBB version
-void anydsl_parallel_for(int32_t num_threads, int32_t lower, int32_t upper, void* args, void* fun) {
-    tbb::task_arena limited((num_threads == 0) ? tbb::task_arena::automatic : num_threads);
-    tbb::task_group tg;
+        const size_t maxCount = *pCount;
 
-    void (*fun_ptr) (void*, int32_t, int32_t) = reinterpret_cast<void (*) (void*, int32_t, int32_t)>(fun);
-
-    limited.execute([&] {
-        tg.run([&] {
-            tbb::parallel_for(tbb::blocked_range<int32_t>(lower, upper),
-                [=] (const tbb::blocked_range<int32_t>& range) {
-                    fun_ptr(args, range.begin(), range.end());
-                });
-        });
-    });
-
-    limited.execute([&] { tg.wait(); });
-}
-
-typedef tbb::concurrent_unordered_map<int32_t, tbb::task_group, std::hash<int32_t>> task_group_map;
-typedef std::pair<task_group_map::iterator, bool> task_group_node_ref;
-static task_group_map task_pool;
-static tbb::concurrent_queue<int32_t> free_ids;
-static std::mutex thread_lock;
-
-int32_t anydsl_spawn_thread(void* args, void* fun) {
-    std::lock_guard<std::mutex> lock(thread_lock);
-    int32_t id = -1;
-    if (!free_ids.try_pop(id)) {
-        id = int32_t(task_pool.size());
-    }
-
-    int32_t(*fun_ptr) (void*) = reinterpret_cast<int32_t(*)(void*)>(fun);
-
-    assert(id >= 0);
-
-    task_group_node_ref p = task_pool.emplace(std::piecewise_construct, std::forward_as_tuple(id), std::forward_as_tuple());
-    tbb::task_group& tg = p.first->second;
-
-    tg.run([=] { fun_ptr(args); });
-
-    return id;
-}
-
-void anydsl_sync_thread(int32_t id) {
-    auto task = task_pool.end();
-    {
-        std::lock_guard<std::mutex> lock(thread_lock);
-        task = task_pool.find(id);
-    }
-    if (task != task_pool.end()) {
-        task->second.wait();
-        {
-            std::lock_guard<std::mutex> lock(thread_lock);
-            free_ids.push(task->first);
+        for (size_t k = 0; k < maxCount; ++k) {
+            ANYDSL_CHECK_RET_TYPE(&pInfo[k], AnyDSL_STRUCTURE_TYPE_DEVICE_INFO);
         }
+
+        size_t c = 0;
+        for (size_t i = 0; i < Runtime::instance().platforms().size() && c < maxCount; ++i) {
+            Platform* platform = Runtime::instance().platforms()[i].get();
+            platform->append_device_infos(pInfo, maxCount - c);
+            c += (size_t)platform->dev_count();
+            pInfo += platform->dev_count(); // Iterate through array
+        }
+    }
+
+    return AnyDSL_SUCCESS;
+}
+
+// ----------------------------------------- Device
+AnyDSLResult anydslGetDevice(const AnyDSLGetDeviceRequest* pRequest, AnyDSLDevice* pDevice)
+{
+    ANYDSL_CHECK_RET_PTR(pRequest);
+    ANYDSL_CHECK_RET_PTR(pDevice);
+    ANYDSL_CHECK_RET_TYPE(pRequest, AnyDSL_STRUCTURE_TYPE_GET_DEVICE_REQUEST);
+
+    Platform* platform = Runtime::instance().query_platform(pRequest->deviceType).value_or(nullptr);
+    if (platform == nullptr)
+        return AnyDSL_INVALID_VALUE;
+
+    const auto pair = platform->get_device(pRequest);
+    if (std::get<1>(pair) == nullptr)
+        return std::get<0>(pair);
+
+    *pDevice = (AnyDSLDevice)std::get<1>(pair);
+    return AnyDSL_SUCCESS;
+}
+
+AnyDSLResult anydslGetDeviceHandle(AnyDSLDevice device, AnyDSLDeviceHandleInfo* pHandleInfo)
+{
+    if (!checkHandle(device))
+        return AnyDSL_INVALID_HANDLE;
+
+    return unwrapDeviceHandle(device)->get_handle(pHandleInfo);
+}
+
+AnyDSLResult anydslGetDeviceInfo(AnyDSLDevice device, AnyDSLDeviceInfo* pDeviceInfo)
+{
+    if (!checkHandle(device))
+        return AnyDSL_INVALID_HANDLE;
+
+    return unwrapDeviceHandle(device)->get_info(pDeviceInfo);
+}
+
+AnyDSLResult anydslGetDeviceFeatures(AnyDSLDevice device, AnyDSLDeviceFeatures* pDeviceFeatures)
+{
+    if (!checkHandle(device))
+        return AnyDSL_INVALID_HANDLE;
+
+    return unwrapDeviceHandle(device)->get_features(pDeviceFeatures);
+}
+
+AnyDSLResult anydslSynchronizeDevice(AnyDSLDevice device)
+{
+    if (device == AnyDSL_HOST)
+        return AnyDSL_SUCCESS;
+
+    if (!checkHandle(device))
+        return AnyDSL_INVALID_HANDLE;
+
+    return unwrapDeviceHandle(device)->sync();
+}
+
+AnyDSLResult anydslLaunchKernel(AnyDSLDevice device, const AnyDSLLaunchKernelInfo* pInfo)
+{
+    if (!checkHandle(device))
+        return AnyDSL_INVALID_HANDLE; // Really?
+
+    return unwrapDeviceHandle(device)->launch_kernel(pInfo);
+}
+
+// ----------------------------------------- Buffer
+AnyDSLResult anydslCreateBuffer(AnyDSLDevice device, const AnyDSLCreateBufferInfo* pInfo, AnyDSLBuffer* pBuffer)
+{
+    ANYDSL_CHECK_RET_PTR(pBuffer);
+    ANYDSL_CHECK_RET_PTR(pInfo);
+    ANYDSL_CHECK_RET_TYPE(pInfo, AnyDSL_STRUCTURE_TYPE_CREATE_BUFFER_INFO);
+
+    if (device == AnyDSL_HOST) {
+        CpuPlatform* cpu = (CpuPlatform*)Runtime::instance().host();
+        const auto pair  = cpu->host()->create_buffer(pInfo);
+        if (std::get<1>(pair) == nullptr)
+            return std::get<0>(pair);
+
+        *pBuffer = (AnyDSLBuffer)std::get<1>(pair);
+        return std::get<0>(pair);
     } else {
-        assert(0 && "Trying to synchronize on invalid task id");
+        if (!checkHandle(device))
+            return AnyDSL_INVALID_HANDLE;
+
+        Device* actualDevice = unwrapDeviceHandle(device);
+        const auto pair      = actualDevice->create_buffer(pInfo);
+        if (std::get<1>(pair) == nullptr)
+            return std::get<0>(pair);
+
+        *pBuffer = (AnyDSLBuffer)std::get<1>(pair);
+        return std::get<0>(pair);
     }
 }
-#endif
+
+AnyDSLResult anydslDestroyBuffer(AnyDSLBuffer buffer)
+{
+    if (!checkHandle(buffer))
+        return AnyDSL_INVALID_HANDLE;
+
+    Buffer* actualBuffer = unwrapBufferHandle(buffer);
+    AnyDSLResult res     = actualBuffer->destroy();
+    delete actualBuffer;
+    return res;
+}
+
+AnyDSLResult anydslGetBufferPointer(AnyDSLBuffer buffer, AnyDSLGetBufferPointerInfo* pInfo)
+{
+    if (!checkHandle(buffer))
+        return AnyDSL_INVALID_HANDLE;
+
+    return unwrapBufferHandle(buffer)->get_pointer(pInfo);
+}
+
+AnyDSLResult anydslCopyBuffer(AnyDSLBuffer bufferSrc, AnyDSLBuffer bufferDst, uint32_t count, const AnyDSLBufferCopy* pRegions)
+{
+    if (!checkHandle(bufferSrc) || !checkHandle(bufferDst))
+        return AnyDSL_INVALID_HANDLE;
+
+    return unwrapBufferHandle(bufferSrc)->copy_to(unwrapBufferHandle(bufferDst), count, pRegions);
+}
+
+AnyDSLResult anydslFillBuffer(AnyDSLBuffer bufferDst, AnyDSLDeviceSize offset, AnyDSLDeviceSize size, uint32_t data)
+{
+    if (!checkHandle(bufferDst))
+        return AnyDSL_INVALID_HANDLE;
+
+    return unwrapBufferHandle(bufferDst)->fill(offset, size, data);
+}
+
+AnyDSLResult anydslUpdateBuffer(AnyDSLBuffer bufferDst, AnyDSLDeviceSize offset, AnyDSLDeviceSize size, const void* pData)
+{
+    if (!checkHandle(bufferDst))
+        return AnyDSL_INVALID_HANDLE;
+
+    if (pData == nullptr)
+        return AnyDSL_INVALID_POINTER;
+
+    return unwrapBufferHandle(bufferDst)->update(offset, size, pData);
+}
+
+// ----------------------------------------- Events
+AnyDSLResult anydslCreateEvent(AnyDSLDevice device, const AnyDSLCreateEventInfo* pInfo, AnyDSLBuffer* pEvent)
+{
+    // TODO: Host
+
+    if (!checkHandle(device))
+        return AnyDSL_INVALID_HANDLE;
+    ANYDSL_CHECK_RET_PTR(pEvent);
+    ANYDSL_CHECK_RET_PTR(pInfo);
+    ANYDSL_CHECK_RET_TYPE(pInfo, AnyDSL_STRUCTURE_TYPE_CREATE_EVENT_INFO);
+
+    Device* actualDevice = unwrapDeviceHandle(device);
+    const auto pair      = actualDevice->create_event(pInfo);
+    if (std::get<1>(pair) == nullptr)
+        return std::get<0>(pair);
+
+    *pEvent = (AnyDSLBuffer)std::get<1>(pair);
+    return std::get<0>(pair);
+}
+
+AnyDSLResult anydslDestroyEvent(AnyDSLEvent event)
+{
+    if (!checkHandle(event))
+        return AnyDSL_INVALID_HANDLE;
+
+    return AnyDSL_SUCCESS;
+}
+
+AnyDSLResult anydslQueryEvent(AnyDSLEvent event, AnyDSLQueryEventInfo* pInfo)
+{
+    if (!checkHandle(event))
+        return AnyDSL_INVALID_HANDLE;
+
+    return unwrapEventHandle(event)->query(pInfo);
+}
+
+AnyDSLResult anydslSynchronizeEvent(AnyDSLEvent event)
+{
+    if (!checkHandle(event))
+        return AnyDSL_INVALID_HANDLE;
+
+    return unwrapEventHandle(event)->sync();
+}
+
+// ----------------------------------------- JIT
+AnyDSLResult anydslCompileJIT(const char* program, size_t count, AnyDSLJITModule* pModule, const AnyDSLJITCompileOptions* pOptions, AnyDSLJITCompileResult* pResult)
+{
+    return JIT::compile(program, count, pModule, pOptions, pResult);
+}
+
+AnyDSLResult anydslDestroyJITModule(AnyDSLJITModule module)
+{
+    return JIT::destroyModule(module);
+}
+
+AnyDSLResult anydslFreeJITCompileResult(const AnyDSLJITCompileResult* pResult)
+{
+    return JIT::freeCompileResult(pResult);
+}
+
+AnyDSLResult anydslLookupJIT(AnyDSLJITModule module, const char* function, AnyDSLJITLookupInfo* pInfo)
+{
+    return JIT::lookup(module, function, pInfo);
+}
+
+AnyDSLResult anydslLinkJITLibrary(AnyDSLJITModule module, size_t count, const AnyDSLJITLinkInfo* pLinkInfo)
+{
+    return JIT::link(module, count, pLinkInfo);
+}
+
+// ----------------------------------------- Logging
+AnyDSL_runtime_API AnyDSLResult anydslCreateLogReportCallback(const AnyDSLLogReportCallbackCreateInfo* pCreateInfo, AnyDSLLogReportCallback* pCallback)
+{
+    return Log::instance().registerHandler(pCreateInfo, pCallback);
+}
+
+AnyDSL_runtime_API AnyDSLResult anydslDestroyLogReportCallback(AnyDSLLogReportCallback callback)
+{
+    return Log::instance().unregisterHandler(callback);
+}
+
+AnyDSL_runtime_API AnyDSLResult anydslLogReportMessage(AnyDSLLogReportLevelFlags flags, const char* pMessage)
+{
+    return Log::instance().log(flags, pMessage);
+}

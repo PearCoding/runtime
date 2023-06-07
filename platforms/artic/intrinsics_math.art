@@ -25,5 +25,6 @@ mod math_builtins {
 #[import(cc = "builtin")] fn log10[T](T) -> T;
 #[import(cc = "builtin")] fn isnan[T](T) -> bool;
 #[import(cc = "builtin")] fn isfinite[T](T) -> bool;
+// #[import(cc = "builtin")] fn fma[T](T, T, T) -> T;
 
 }

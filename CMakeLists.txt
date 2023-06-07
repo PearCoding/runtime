@@ -2,14 +2,13 @@ cmake_minimum_required(VERSION 3.13.4 FATAL_ERROR)
 
 project(AnyDSL-runtime)
 
-set(PACKAGE_VERSION "0.3.9")
+set(PACKAGE_VERSION "2.0.0")
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "limited config" FORCE)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(BUILD_SHARED_LIBS "Build shared libraries" ON)
 option(RUNTIME_JIT "enable jit support in the runtime" OFF)
-option(DEBUG_OUTPUT "enable debug output" OFF)
 
 if(CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Debug or Release" FORCE)
@@ -22,9 +21,17 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 find_path(Artic_DIR NAMES artic-config.cmake PATHS ${Artic_DIR} $ENV{Artic_DIR} ${CMAKE_BINARY_DIR}/share/anydsl/cmake)
-find_path(Impala_DIR NAMES impala-config.cmake PATHS ${Impala_DIR} $ENV{Impala_DIR} ${CMAKE_BINARY_DIR}/share/anydsl/cmake)
+# find_path(Impala_DIR NAMES impala-config.cmake PATHS ${Impala_DIR} $ENV{Impala_DIR} ${CMAKE_BINARY_DIR}/share/anydsl/cmake)
 
-set(AnyDSL_runtime_ENABLE_DEBUG_OUTPUT ${DEBUG_OUTPUT})
+# Necessary to specify whether or not to build shared libraries on a per-project basis
+option(AnyDSL_runtime_BUILD_SHARED "Builds a shared library for the runtime (and JIT, if enabled)" ${BUILD_SHARED_LIBS})
+if (AnyDSL_runtime_BUILD_SHARED)
+    set(AnyDSL_runtime_BUILD "SHARED")
+else()
+    set(AnyDSL_runtime_BUILD "STATIC")
+endif()
+
+configure_file(include/anydsl_runtime_config.h.in ${CMAKE_BINARY_DIR}/include/anydsl_runtime_config.h @ONLY)
 
 add_subdirectory(src)
 
@@ -37,3 +44,10 @@ endif()
 export(TARGETS ${RUNTIME_LIBRARIES} FILE ${CMAKE_BINARY_DIR}/share/anydsl/cmake/anydsl_runtime-exports.cmake)
 configure_file(cmake/anydsl_runtime-config.cmake.in ${CMAKE_BINARY_DIR}/share/anydsl/cmake/anydsl_runtime-config.cmake @ONLY)
 configure_file(cmake/build_xilinx_hls.cmake.in ${CMAKE_BINARY_DIR}/share/anydsl/cmake/build_xilinx_hls.cmake @ONLY)
+
+option(ANYDSL_BUILD_TOOLS "build some extra tools useful for diagnosis" ON)
+
+if(ANYDSL_BUILD_TOOLS)
+add_subdirectory(tools/inspector)
+add_subdirectory(tools/jit)
+endif()

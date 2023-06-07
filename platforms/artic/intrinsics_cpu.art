@@ -7,9 +7,9 @@
 #[import(cc = "C", name = "erff")]              fn cpu_erff(_: f32) -> f32;
 #[import(cc = "C", name = "fmodf")]             fn cpu_fmodf(_: f32, _: f32) -> f32;
 #[import(cc = "C", name = "atan2f")]            fn cpu_atan2f(_: f32, _: f32) -> f32;
-#[import(cc = "C", name = "anydsl_isinff")]     fn cpu_isinff(_: f32) -> i32;
-#[import(cc = "C", name = "anydsl_isnanf")]     fn cpu_isnanf(_: f32) -> i32;
-#[import(cc = "C", name = "anydsl_isfinitef")]  fn cpu_isfinitef(_: f32) -> i32;
+#[import(cc = "C", name = "anydsl_std_isinff")]     fn cpu_isinff(_: f32) -> i32;
+#[import(cc = "C", name = "anydsl_std_isnanf")]     fn cpu_isnanf(_: f32) -> i32;
+#[import(cc = "C", name = "anydsl_std_isfinitef")]  fn cpu_isfinitef(_: f32) -> i32;
 //#[import(cc = "C", name = "sin")]               fn cpu_sin(f64) -> f64;
 //#[import(cc = "C", name = "cos")]               fn cpu_cos(f64) -> f64;
 #[import(cc = "C", name = "tan")]               fn cpu_tan(_: f64) -> f64;
@@ -19,9 +19,9 @@
 #[import(cc = "C", name = "erf")]               fn cpu_erf(_: f64) -> f64;
 #[import(cc = "C", name = "fmod")]              fn cpu_fmod(_: f64, _: f64) -> f64;
 #[import(cc = "C", name = "atan2")]             fn cpu_atan2(_: f64, _: f64) -> f64;
-#[import(cc = "C", name = "anydsl_isinf")]      fn cpu_isinf(_: f64) -> i32;
-#[import(cc = "C", name = "anydsl_isnan")]      fn cpu_isnan(_: f64) -> i32;
-#[import(cc = "C", name = "anydsl_isfinite")]   fn cpu_isfinite(_: f64) -> i32;
+#[import(cc = "C", name = "anydsl_std_isinf")]      fn cpu_isinf(_: f64) -> i32;
+#[import(cc = "C", name = "anydsl_std_isnan")]      fn cpu_isnan(_: f64) -> i32;
+#[import(cc = "C", name = "anydsl_std_isfinite")]   fn cpu_isfinite(_: f64) -> i32;
 
 #[import(cc = "device", name = "llvm.exp.f32")]         fn cpu_expf(_: f32) -> f32;
 #[import(cc = "device", name = "llvm.exp2.f32")]        fn cpu_exp2f(_: f32) -> f32;
