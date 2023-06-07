@@ -1,0 +1,6 @@
+#[export]
+fn test_func() -> () {
+    print_i32(42);
+    print_string("\n");
+    print_flush();
+}

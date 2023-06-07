@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(BUILD_SHARED_LIBS "Build shared libraries" ON)
-option(RUNTIME_JIT "enable jit support in the runtime" OFF)
+option(AnyDSL_RUNTIME_JIT "Enable jit support in the runtime" ON)
 
 if(CMAKE_BUILD_TYPE STREQUAL "")
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Debug or Release" FORCE)
@@ -45,9 +45,9 @@ export(TARGETS ${RUNTIME_LIBRARIES} FILE ${CMAKE_BINARY_DIR}/share/anydsl/cmake/
 configure_file(cmake/anydsl_runtime-config.cmake.in ${CMAKE_BINARY_DIR}/share/anydsl/cmake/anydsl_runtime-config.cmake @ONLY)
 configure_file(cmake/build_xilinx_hls.cmake.in ${CMAKE_BINARY_DIR}/share/anydsl/cmake/build_xilinx_hls.cmake @ONLY)
 
-option(ANYDSL_BUILD_TOOLS "build some extra tools useful for diagnosis" ON)
+option(AnyDSL_BUILD_TOOLS "Build some extra tools useful for diagnosis" ON)
 
-if(ANYDSL_BUILD_TOOLS)
+if(AnyDSL_BUILD_TOOLS)
 add_subdirectory(tools/inspector)
 add_subdirectory(tools/jit)
 endif()

@@ -23,14 +23,8 @@
 #else  // AnyDSL_runtime_EXPORTS
 #define AnyDSL_runtime_API __dll_import
 #endif // AnyDSL_runtime_EXPORTS
-#ifdef AnyDSL_runtime_jit_EXPORTS
-#define AnyDSL_runtime_jit_API __dll_export
-#else  // AnyDSL_runtime_jit_EXPORTS
-#define AnyDSL_runtime_jit_API __dll_import
-#endif // AnyDSL_runtime_jit_EXPORTS
 #else  // AnyDSL_runtime_BUILD_SHARED
 #define AnyDSL_runtime_API
-#define AnyDSL_runtime_jit_API
 #endif // AnyDSL_runtime_BUILD_SHARED
 
 // CUDA support

@@ -9,6 +9,8 @@
 
 namespace ANYDSL_NAMESPACE {
 
+// TODO: This is only a subset of the interface
+
 enum class Platform : int32_t {
     Host   = AnyDSL_DEVICE_HOST,
     Cuda   = AnyDSL_DEVICE_CUDA,
@@ -168,6 +170,6 @@ void copy(const Array<T>& a, Array<T>& b)
     copy(a, b, a.size());
 }
 
-} // namespace AnyDSL
+} // namespace ANYDSL_NAMESPACE
 
 #endif // ANYDSL_RUNTIME_HPP

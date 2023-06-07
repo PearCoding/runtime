@@ -51,7 +51,8 @@ typedef enum AnyDSLResult {
     AnyDSL_INVALID_VALUE        = -7,
     AnyDSL_INVALID_HANDLE       = -8,
     AnyDSL_PLATFORM_ERROR       = -9,
-    AnyDSL_JIT_NO_FUNCTION      = -100,
+    AnyDSL_JIT_ERROR            = -100,
+    AnyDSL_JIT_NO_FUNCTION      = -101,
 } AnyDSLResult;
 
 typedef enum AnyDSLDeviceType {
@@ -66,7 +67,7 @@ typedef enum AnyDSLStructureType {
     AnyDSL_STRUCTURE_TYPE_FEATURES    = 0x0,
     AnyDSL_STRUCTURE_TYPE_DEVICE_INFO = 0x1,
 
-    AnyDSL_STRUCTURE_TYPE_GET_DEVICE_REQUEST           = 0x10,
+    AnyDSL_STRUCTURE_TYPE_GET_DEVICE_REQUEST        = 0x10,
     AnyDSL_STRUCTURE_TYPE_DEVICE_HANDLE_INFO        = 0x11,
     AnyDSL_STRUCTURE_TYPE_DEVICE_FEATURES           = 0x12,
     AnyDSL_STRUCTURE_TYPE_DEVICE_LAUNCH_KERNEL_INFO = 0x13,

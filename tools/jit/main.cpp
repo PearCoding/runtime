@@ -1,14 +1,7 @@
 #include "anydsl_runtime.h"
-#include <array>
+#include <fstream>
 #include <iostream>
-#include <vector>
-
-static std::array<const char*, 4> sDeviceTypes = {
-    "Host",
-    "Cuda",
-    "OpenCL",
-    "HSA"
-};
+#include <sstream>
 
 int main(int argc, char** argv)
 {
@@ -26,5 +19,70 @@ int main(int argc, char** argv)
         return -2;
     }
 
+    if (argc < 3) {
+        std::cout << "Not enough arguments given. Expected <function> <files>..." << std::endl;
+        return -1;
+    }
+
+    std::string func_name = argv[1];
+
+    std::stringstream src;
+    for (int c = 2; c < argc; ++c) {
+        std::ifstream stream(argv[c]);
+        src << stream.rdbuf();
+    }
+
+    std::string content = src.str();
+
+    AnyDSLJITCompileOptions options = {
+        AnyDSL_STRUCTURE_TYPE_JIT_COMPILE_OPTIONS,
+        nullptr,
+        3,
+        4,
+        AnyDSL_COMPILE_LANGUAGE_ARTIC_BIT,
+        AnyDSL_TRUE,
+        nullptr
+    };
+
+    AnyDSLJITCompileResult result = {
+        AnyDSL_STRUCTURE_TYPE_JIT_COMPILE_RESULT,
+        nullptr,
+        nullptr // Will be set by function
+    };
+
+    AnyDSLJITModule module;
+    AnyDSLResult res = anydslCompileJIT(content.data(), content.size(), &module, &options, &result);
+
+    if (result.pLogOutput != nullptr)
+        std::cout << result.pLogOutput << std::endl;
+    anydslFreeJITCompileResult(&result);
+
+    if (res != AnyDSL_SUCCESS) {
+        std::cout << "Failed to compile" << std::endl;
+        return -1;
+    }
+
+    AnyDSLJITLookupInfo info = {
+        AnyDSL_STRUCTURE_TYPE_JIT_LOOKUP_INFO,
+        nullptr,
+        nullptr // Will be set by function
+    };
+
+    if (anydslLookupJIT(module, func_name.c_str(), &info) != AnyDSL_SUCCESS) {
+        std::cout << "Failed to get function '" << func_name << "'" << std::endl;
+        anydslDestroyJITModule(module);
+        return -1;
+    }
+
+    if (info.pHandle == nullptr) {
+        std::cout << "anydslLookupJIT should never return a zero function and AnyDSL_SUCCESS!" << std::endl;
+        anydslDestroyJITModule(module);
+        return -42;
+    }
+
+    auto func = (void (*)())info.pHandle;
+    func();
+
+    anydslDestroyJITModule(module);
     return 0;
 }

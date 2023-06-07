@@ -121,7 +121,7 @@ struct JITSingleton {
             llvm_context = std::make_unique<llvm::LLVMContext>();
             llvm_module  = llvm::parseIR(llvm::MemoryBuffer::getMemBuffer(cached_llvm)->getMemBufferRef(), diagnostic_err, *llvm_context);
 
-            if (pResult != nullptr) {
+            if (!llvm_module && pResult != nullptr) {
                 std::string tmp;
                 auto stream = llvm::raw_string_ostream(tmp);
                 diagnostic_err.print(module_name.c_str(), stream, false, true);
@@ -134,6 +134,9 @@ struct JITSingleton {
                     pResult->pLogOutput = nullptr;
                 }
             }
+
+            if (llvm_module == nullptr)
+                return -1;
 
             auto load_backend_src = [&](std::string ext) {
                 std::string cached_src = Cache::instance().load_from_cache(ext + program_str, ext);
@@ -212,7 +215,7 @@ AnyDSLResult JIT::compile(const char* program, size_t size, AnyDSLJITModule* pMo
 
     *pModule = (AnyDSLJITModule)key;
 
-    return AnyDSL_SUCCESS;
+    return jit().check_key(key) ? AnyDSL_SUCCESS : AnyDSL_JIT_ERROR;
 }
 
 AnyDSLResult JIT::destroyModule(AnyDSLJITModule module)

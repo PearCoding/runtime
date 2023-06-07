@@ -171,7 +171,7 @@ endif()
 
 set(AnyDSL_runtime_HAS_LLVM_SUPPORT ${LLVM_FOUND} CACHE INTERNAL "enables nvptx / gcn support")
 
-if(RUNTIME_JIT)
+if(AnyDSL_RUNTIME_JIT)
     function(add_runtime_jit frontend)
         find_package(Python3 COMPONENTS Interpreter REQUIRED)
         if("${frontend}" STREQUAL "artic")
@@ -198,24 +198,24 @@ if(RUNTIME_JIT)
     find_package(Impala QUIET)
 
     if(NOT(Artic_FOUND OR Impala_FOUND))
-        message(FATAL_ERROR "Enabling RUNTIME_JIT requires artic or impala.\nPlease specify either Artic_DIR or Impala_DIR or both.")
+        message(FATAL_ERROR "Enabling AnyDSL_RUNTIME_JIT requires artic or impala.\nPlease specify either Artic_DIR or Impala_DIR or both.")
     endif()
 
     find_package(Thorin REQUIRED)
 
     if(NOT Thorin_HAS_LLVM_SUPPORT)
-        message(FATAL_ERROR "Enabling RUNTIME_JIT requires Thorin to be built with LLVM")
+        message(FATAL_ERROR "Enabling AnyDSL_RUNTIME_JIT requires Thorin to be built with LLVM")
     endif()
 
     if(NOT LLVM_FOUND)
-        message(FATAL_ERROR "Enabling RUNTIME_JIT requires runtime to be built with LLVM")
+        message(FATAL_ERROR "Enabling AnyDSL_RUNTIME_JIT requires runtime to be built with LLVM")
     endif()
 
     if(Artic_FOUND)
         message(STATUS "Found Artic: ${Artic_DIR}")
         add_runtime_jit(artic)
         target_link_libraries(runtime PRIVATE ${Thorin_LIBRARIES} ${Artic_LIBRARY})
-        set(AnyDSL_runtime_HAS_ARTIC_LANGUAGE ${Artic_FOUND} CACHE INTERNAL "enables artic language support for JIT")
+        set(AnyDSL_runtime_HAS_ARTIC_LANGUAGE ${Artic_FOUND} CACHE INTERNAL "Enables artic language support for JIT")
     endif()
 
     # Currently we only support one language
@@ -223,13 +223,15 @@ if(RUNTIME_JIT)
     #     message(STATUS "Found Impala: ${Impala_DIR}")
     #     add_runtime_jit(impala)
     #     target_link_libraries(runtime PRIVATE ${Thorin_LIBRARIES} ${Impala_LIBRARY})
-    #     set(AnyDSL_runtime_HAS_IMPALA_LANGUAGE ${Impala_FOUND} CACHE INTERNAL "enables impala language support for JIT")
+    #     set(AnyDSL_runtime_HAS_IMPALA_LANGUAGE ${Impala_FOUND} CACHE INTERNAL "Enables impala language support for JIT")
     # endif()
+    set(HAS_JIT ON)
 else()
     target_sources(runtime PRIVATE jit_null.cpp)
+    set(HAS_JIT OFF)
 endif()
 
-set(AnyDSL_runtime_HAS_JIT_SUPPORT ${RUNTIME_JIT_LIBRARIES} CACHE INTERNAL "enables anydsl_compile() API")
+set(AnyDSL_runtime_HAS_JIT_SUPPORT ${HAS_JIT} CACHE INTERNAL "Enables anydsl_compile() API")
 
 target_include_directories(runtime PUBLIC $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/include>)
 configure_file(anydsl_runtime_internal_config.h.in ${AnyDSL_runtime_INTERNAL_CONFIG_FILE} @ONLY)
