@@ -32,6 +32,8 @@ set(SRC
     host/cpu_buffer.h
     host/cpu_device.cpp
     host/cpu_device.h
+    host/cpu_event.cpp
+    host/cpu_event.h
     host/cpu_platform.cpp
     host/cpu_platform.h
     )

@@ -1,4 +1,5 @@
 #include "anydsl_runtime.h"
+#include "anydsl_runtime.hpp"
 #include <array>
 #include <iostream>
 #include <vector>
@@ -42,7 +43,7 @@ int main(int argc, char** argv)
                   << " - Number   : " << infos[i].deviceNumber << std::endl
                   << " - Version  : " << infos[i].version << std::endl
                   << " - Total MB : " << (infos[i].totalMemory / (1024 * 1024)) << std::endl
-                  << " - Is Host  : " << (infos[i].bIsHost != AnyDSL_FALSE ? "Yes" : "No") << std::endl;
+                  << " - Is Host  : " << (infos[i].isHost != AnyDSL_FALSE ? "Yes" : "No") << std::endl;
 
         AnyDSLGetDeviceRequest req = {
             AnyDSL_STRUCTURE_TYPE_GET_DEVICE_REQUEST,

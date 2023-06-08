@@ -10,6 +10,7 @@
 namespace ANYDSL_NAMESPACE {
 
 // TODO: This is only a subset of the interface
+// TODO: Properly handle errors
 
 enum class Platform : int32_t {
     Host   = AnyDSL_DEVICE_HOST,
@@ -27,7 +28,7 @@ public:
             AnyDSL_STRUCTURE_TYPE_GET_DEVICE_REQUEST,
             nullptr,
             (AnyDSLDeviceType)platform,
-            num
+            (uint32_t)num
         };
 
         anydslGetDevice(&info, &mHandle);
@@ -75,7 +76,7 @@ public:
         mDevice     = other.mDevice;
         mSize       = other.mSize;
         mData       = other.mData;
-        other.data_ = nullptr;
+        other.mData = nullptr;
         return *this;
     }
 
@@ -169,6 +170,71 @@ void copy(const Array<T>& a, Array<T>& b)
 {
     copy(a, b, a.size());
 }
+
+class Event {
+public:
+    inline Event()
+        : mDevice()
+    {
+        create();
+    }
+
+    inline Event(const Device& device)
+        : mDevice(device)
+    {
+        create();
+    }
+
+    inline ~Event()
+    {
+        destroy();
+    }
+
+    inline bool record()
+    {
+        return anydslRecordEvent(mEvent) == AnyDSL_SUCCESS;
+    }
+
+    inline bool wait()
+    {
+        return anydslSynchronizeEvent(mEvent) == AnyDSL_SUCCESS;
+    }
+
+    inline AnyDSLEvent handle() const { return mEvent; }
+
+    inline static float elapsedTimeMS(const Event& start, const Event& end)
+    {
+        AnyDSLQueryEventInfo info = {
+            AnyDSL_STRUCTURE_TYPE_QUERY_EVENT_INFO,
+            nullptr,
+            0.0f // Will be set by the function
+        };
+        AnyDSLResult res = anydslQueryEvent(start.handle(), end.handle(), &info);
+
+        if (res != AnyDSL_SUCCESS)
+            return -1;
+        else
+            return info.elapsedTimeMS;
+    }
+
+private:
+    inline void create()
+    {
+        AnyDSLCreateEventInfo info = {
+            AnyDSL_STRUCTURE_TYPE_CREATE_EVENT_INFO,
+            nullptr
+        };
+        anydslCreateEvent(mDevice.handle(), &info, &mEvent);
+    }
+
+    inline void destroy()
+    {
+        anydslDestroyEvent(mEvent);
+    }
+
+    Device mDevice;
+    AnyDSLEvent mEvent;
+};
 
 } // namespace ANYDSL_NAMESPACE
 

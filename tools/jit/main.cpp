@@ -14,7 +14,7 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    if (features.bHasJIT != AnyDSL_TRUE) {
+    if (features.hasJIT != AnyDSL_TRUE) {
         std::cout << "Your AnyDSL runtime does has no JIT support" << std::endl;
         return -2;
     }
@@ -53,8 +53,8 @@ int main(int argc, char** argv)
     AnyDSLJITModule module;
     AnyDSLResult res = anydslCompileJIT(content.data(), content.size(), &module, &options, &result);
 
-    if (result.pLogOutput != nullptr)
-        std::cout << result.pLogOutput << std::endl;
+    if (result.logOutput != nullptr)
+        std::cout << result.logOutput << std::endl;
     anydslFreeJITCompileResult(&result);
 
     if (res != AnyDSL_SUCCESS) {

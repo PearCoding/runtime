@@ -29,6 +29,7 @@ ANYDSL_MAKE_HANDLE(AnyDSLLogReportCallback);
 
 #undef ANYDSL_MAKE_HANDLE
 
+#define AnyDSL_NULL_HANDLE (0)
 #define AnyDSL_HOST ((AnyDSLDevice)(0))
 
 #define AnyDSL_FALSE (0)
@@ -50,7 +51,8 @@ typedef enum AnyDSLResult {
     AnyDSL_INVALID_POINTER      = -6,
     AnyDSL_INVALID_VALUE        = -7,
     AnyDSL_INVALID_HANDLE       = -8,
-    AnyDSL_PLATFORM_ERROR       = -9,
+    AnyDSL_DEVICE_MISSMATCH     = -9,
+    AnyDSL_PLATFORM_ERROR       = -10,
     AnyDSL_JIT_ERROR            = -100,
     AnyDSL_JIT_NO_FUNCTION      = -101,
 } AnyDSLResult;
@@ -129,7 +131,7 @@ typedef struct AnyDSLFeatures {
     AnyDSLStructureType sType;
     const void* pNext;
 
-    AnyDSLBool bHasJIT;
+    AnyDSLBool hasJIT;
     AnyDSLCompileLanguageFlags supportedLanguages;
 } AnyDSLFeatures;
 
@@ -142,7 +144,7 @@ typedef struct AnyDSLDeviceInfo {
     uint32_t deviceNumber;
     const char* name;
     uint32_t version;
-    AnyDSLBool bIsHost;
+    AnyDSLBool isHost;
 
     size_t totalMemory; // In bytes
 } AnyDSLDeviceInfo;
@@ -210,7 +212,7 @@ typedef struct AnyDSLQueryEventInfo {
     AnyDSLStructureType sType;
     const void* pNext;
 
-    float elapsedTime;
+    float elapsedTimeMS;
 } AnyDSLQueryEventInfo;
 
 // -------------------------------------- Structures [JIT]
@@ -234,14 +236,14 @@ typedef struct AnyDSLJITCompileOptions {
     /// @brief Set to AnyDSL_TRUE to enable caching.
     AnyDSLBool bUseCache;
     /// @brief Directory to cache output. Use NULL for default.
-    const char* pCacheDir;
+    const char* cacheDir;
 } AnyDSLJITCompileOptions;
 
 typedef struct AnyDSLJITCompileResult {
     AnyDSLStructureType sType;
     const void* pNext;
 
-    char* pLogOutput;
+    char* logOutput;
 } AnyDSLJITCompileResult;
 
 typedef struct AnyDSLJITLookupInfo {
@@ -255,7 +257,7 @@ typedef struct AnyDSLJITLinkInfo {
     AnyDSLStructureType sType;
     const void* pNext;
 
-    const char* pLibraryFilename;
+    const char* libraryFilename;
 } AnyDSLJITLinkInfo;
 
 // -------------------------------------- Structures [Utils]
@@ -342,16 +344,19 @@ AnyDSL_runtime_API AnyDSLResult anydslUpdateBuffer(AnyDSLBuffer bufferDst, AnyDS
 /// information of the to be created event.
 /// @param pEvent Pointer to the newly created event.
 /// @return AnyDSL_SUCCESS if sucessful.
-AnyDSL_runtime_API AnyDSLResult anydslCreateEvent(AnyDSLDevice device, const AnyDSLCreateEventInfo* pInfo, AnyDSLBuffer* pEvent);
-/// @brief Destroy a event previously created by anydslCreateEvent.
+AnyDSL_runtime_API AnyDSLResult anydslCreateEvent(AnyDSLDevice device, const AnyDSLCreateEventInfo* pInfo, AnyDSLEvent* pEvent);
+/// @brief Destroy an event previously created by anydslCreateEvent.
 /// @param event The event to destroy.
 AnyDSL_runtime_API AnyDSLResult anydslDestroyEvent(AnyDSLEvent event);
-/// @brief Query state of the event.
-/// @param event The event to query.
-/// @param pInfo Optional information when event has already completed. Set to
-/// NULL if not desired. Only populated if event has finished.
+/// @brief Record an event.
+/// @param event The event to record.
+AnyDSL_runtime_API AnyDSLResult anydslRecordEvent(AnyDSLEvent event);
+/// @brief Query information of two events.
+/// @param startEvent The starting event to query. Both events have to be created by the same device.
+/// @param endEvent The ending event to query. Both events have to be created by the same device. This can be AnyDSL_NULL_HANDLE only if pInfo is null. This is to permit querying information about startEvent only.
+/// @param pInfo Optional information when event has already completed. Set to NULL if not desired. Only populated if event has finished.
 /// @return AnyDSL_SUCCESS if the event finished, AnyDSL_NOT_READY if not. Every other return value indicates an error.
-AnyDSL_runtime_API AnyDSLResult anydslQueryEvent(AnyDSLEvent event, AnyDSLQueryEventInfo* pInfo);
+AnyDSL_runtime_API AnyDSLResult anydslQueryEvent(AnyDSLEvent startEvent, AnyDSLEvent endEvent, AnyDSLQueryEventInfo* pInfo);
 /// @brief Wait on the host for the event to finish.
 /// @param event Event to wait for on the host.
 AnyDSL_runtime_API AnyDSLResult anydslSynchronizeEvent(AnyDSLEvent event);

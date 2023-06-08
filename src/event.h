@@ -14,10 +14,14 @@ public:
 
     virtual ~Event() {}
 
-    virtual AnyDSLResult query(AnyDSLQueryEventInfo* pInfo) = 0;
-    virtual AnyDSLResult sync()                             = 0;
+    virtual AnyDSLResult create(const AnyDSLCreateEventInfo* pInfo)       = 0;
+    virtual AnyDSLResult destroy()                                        = 0;
+    virtual AnyDSLResult record()                                         = 0;
+    virtual AnyDSLResult query(Event* event, AnyDSLQueryEventInfo* pInfo) = 0;
+    virtual AnyDSLResult sync()                                           = 0;
 
     inline Device* device() { return mDevice; }
+
 protected:
     Device* mDevice;
 };

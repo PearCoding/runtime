@@ -61,7 +61,7 @@ AnyDSLResult CudaDevice::get_info(AnyDSLDeviceInfo* pInfo)
     CUresult err = cuDeviceTotalMem(&bytes, mDevice);
     CHECK_CUDA_RET(err, "cuDeviceTotalMem()");
 
-    pInfo->bIsHost      = AnyDSL_FALSE;
+    pInfo->isHost       = AnyDSL_FALSE;
     pInfo->deviceNumber = (uint32_t)mId;
     pInfo->deviceType   = AnyDSL_DEVICE_CUDA;
     pInfo->name         = mName.c_str();
@@ -125,7 +125,7 @@ AnyDSLResult CudaDevice::get_features(AnyDSLDeviceFeatures* pFeatures)
             err = cuMemGetInfo(&freeMem, &totalMem);
             CHECK_CUDA_RET(err, "cuMemGetInfo()");
 
-            pCudaFeatures->freeMemory  = freeMem;
+            pCudaFeatures->freeMemory = freeMem;
         }
 
         ptr = nextChainEntry(ptr);
@@ -157,7 +157,13 @@ std::tuple<AnyDSLResult, Buffer*> CudaDevice::create_buffer(const AnyDSLCreateBu
 
 std::tuple<AnyDSLResult, Event*> CudaDevice::create_event(const AnyDSLCreateEventInfo* pInfo)
 {
-    return { AnyDSL_NOT_AVAILABLE, nullptr };
+    CudaEvent* event = new CudaEvent(this);
+
+    if (event == nullptr)
+        return { AnyDSL_OUT_OF_HOST_MEMORY, nullptr };
+
+    AnyDSLResult res = event->create(pInfo);
+    return { res, event };
 }
 
 AnyDSLResult CudaDevice::launch_kernel(const AnyDSLLaunchKernelInfo* pInfo)

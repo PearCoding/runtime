@@ -39,9 +39,9 @@ AnyDSLResult anydslGetFeatures(AnyDSLFeatures* pFeatures)
     ANYDSL_CHECK_RET_PTR(pFeatures);
 
 #ifdef AnyDSL_runtime_HAS_JIT_SUPPORT
-    pFeatures->bHasJIT = AnyDSL_TRUE;
+    pFeatures->hasJIT = AnyDSL_TRUE;
 #else
-    pFeatures->bHasJIT = AnyDSL_FALSE;
+    pFeatures->hasJIT = AnyDSL_FALSE;
 #endif
 
     pFeatures->supportedLanguages = 0;
@@ -223,7 +223,7 @@ AnyDSLResult anydslUpdateBuffer(AnyDSLBuffer bufferDst, AnyDSLDeviceSize offset,
 }
 
 // ----------------------------------------- Events
-AnyDSLResult anydslCreateEvent(AnyDSLDevice device, const AnyDSLCreateEventInfo* pInfo, AnyDSLBuffer* pEvent)
+AnyDSLResult anydslCreateEvent(AnyDSLDevice device, const AnyDSLCreateEventInfo* pInfo, AnyDSLEvent* pEvent)
 {
     // TODO: Host
 
@@ -238,7 +238,7 @@ AnyDSLResult anydslCreateEvent(AnyDSLDevice device, const AnyDSLCreateEventInfo*
     if (std::get<1>(pair) == nullptr)
         return std::get<0>(pair);
 
-    *pEvent = (AnyDSLBuffer)std::get<1>(pair);
+    *pEvent = (AnyDSLEvent)std::get<1>(pair);
     return std::get<0>(pair);
 }
 
@@ -247,15 +247,38 @@ AnyDSLResult anydslDestroyEvent(AnyDSLEvent event)
     if (!checkHandle(event))
         return AnyDSL_INVALID_HANDLE;
 
-    return AnyDSL_SUCCESS;
+    Event* actualEvent = unwrapEventHandle(event);
+    AnyDSLResult res   = actualEvent->destroy();
+    delete actualEvent;
+    return res;
 }
 
-AnyDSLResult anydslQueryEvent(AnyDSLEvent event, AnyDSLQueryEventInfo* pInfo)
+AnyDSLResult anydslRecordEvent(AnyDSLEvent event)
 {
     if (!checkHandle(event))
         return AnyDSL_INVALID_HANDLE;
 
-    return unwrapEventHandle(event)->query(pInfo);
+    return unwrapEventHandle(event)->record();
+}
+
+AnyDSLResult anydslQueryEvent(AnyDSLEvent startEvent, AnyDSLEvent endEvent, AnyDSLQueryEventInfo* pInfo)
+{
+    if (!checkHandle(startEvent))
+        return AnyDSL_INVALID_HANDLE;
+
+    if (pInfo != nullptr)
+        ANYDSL_CHECK_RET_TYPE(pInfo, AnyDSL_STRUCTURE_TYPE_QUERY_EVENT_INFO);
+
+    if (pInfo != nullptr && !checkHandle(endEvent))
+        return AnyDSL_INVALID_HANDLE;
+
+    Event* ev1 = unwrapEventHandle(startEvent);
+    Event* ev2 = unwrapEventHandle(endEvent);
+
+    if (ev2 != nullptr && ev1->device() != ev2->device())
+        return AnyDSL_DEVICE_MISSMATCH;
+
+    return ev1->query(ev2, pInfo);
 }
 
 AnyDSLResult anydslSynchronizeEvent(AnyDSLEvent event)

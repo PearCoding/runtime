@@ -1,5 +1,6 @@
 #include "cpu_device.h"
 #include "cpu_buffer.h"
+#include "cpu_event.h"
 #include "log.h"
 #include "utils.h"
 
@@ -111,7 +112,7 @@ AnyDSLResult CpuDevice::get_info(AnyDSLDeviceInfo* pInfo)
     ANYDSL_CHECK_RET_TYPE(pInfo, AnyDSL_STRUCTURE_TYPE_DEVICE_INFO);
     // TODO: Iterate through the chain?
 
-    pInfo->bIsHost      = AnyDSL_TRUE;
+    pInfo->isHost       = AnyDSL_TRUE;
     pInfo->deviceNumber = 0;
     pInfo->deviceType   = AnyDSL_DEVICE_HOST;
     pInfo->name         = mName.c_str();
@@ -147,6 +148,13 @@ std::tuple<AnyDSLResult, Buffer*> CpuDevice::create_buffer(const AnyDSLCreateBuf
 
 std::tuple<AnyDSLResult, Event*> CpuDevice::create_event(const AnyDSLCreateEventInfo* pInfo)
 {
+    CpuEvent* event = new CpuEvent(this);
+
+    if (event == nullptr)
+        return { AnyDSL_OUT_OF_HOST_MEMORY, nullptr };
+
+    AnyDSLResult res = event->create(pInfo);
+    return { res, event };
 }
 
 AnyDSLResult CpuDevice::launch_kernel(const AnyDSLLaunchKernelInfo* pInfo)

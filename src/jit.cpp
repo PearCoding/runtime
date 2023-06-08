@@ -109,11 +109,11 @@ struct JITSingleton {
             if (pResult != nullptr) {
                 std::string err = err_stream.str();
                 if (!err.empty()) {
-                    pResult->pLogOutput = new char[err.size() + 1];
-                    std::memcpy(pResult->pLogOutput, err.data(), err.size() * sizeof(char));
-                    pResult->pLogOutput[err.size()] = '\0';
+                    pResult->logOutput = new char[err.size() + 1];
+                    std::memcpy(pResult->logOutput, err.data(), err.size() * sizeof(char));
+                    pResult->logOutput[err.size()] = '\0';
                 } else {
-                    pResult->pLogOutput = nullptr;
+                    pResult->logOutput = nullptr;
                 }
             }
         } else {
@@ -127,11 +127,11 @@ struct JITSingleton {
                 diagnostic_err.print(module_name.c_str(), stream, false, true);
 
                 if (!tmp.empty()) {
-                    pResult->pLogOutput = new char[tmp.size() + 1];
-                    std::memcpy(pResult->pLogOutput, tmp.data(), tmp.size() * sizeof(char));
-                    pResult->pLogOutput[tmp.size()] = '\0';
+                    pResult->logOutput = new char[tmp.size() + 1];
+                    std::memcpy(pResult->logOutput, tmp.data(), tmp.size() * sizeof(char));
+                    pResult->logOutput[tmp.size()] = '\0';
                 } else {
-                    pResult->pLogOutput = nullptr;
+                    pResult->logOutput = nullptr;
                 }
             }
 
@@ -234,8 +234,8 @@ AnyDSLResult JIT::freeCompileResult(const AnyDSLJITCompileResult* pResult)
 
     ANYDSL_CHECK_RET_TYPE(pResult, AnyDSL_STRUCTURE_TYPE_JIT_COMPILE_RESULT);
 
-    if (pResult->pLogOutput != nullptr)
-        delete[] pResult->pLogOutput;
+    if (pResult->logOutput != nullptr)
+        delete[] pResult->logOutput;
 
     return AnyDSL_SUCCESS;
 }
@@ -269,7 +269,7 @@ AnyDSLResult JIT::link(AnyDSLJITModule module, size_t count, const AnyDSLJITLink
     for (size_t i = 0; i < count; ++i) {
         ANYDSL_CHECK_RET_TYPE(pLinkInfo, AnyDSL_STRUCTURE_TYPE_JIT_LINK_INFO);
 
-        jit().link(pLinkInfo->pLibraryFilename);
+        jit().link(pLinkInfo->libraryFilename);
 
         ++pLinkInfo;
     }

@@ -1,18 +1,20 @@
 #pragma once
 
-#include "cuda_device.h"
-#include "cuda_inc.h"
 #include "event.h"
 
+#include <chrono>
+#include <condition_variable>
+#include <mutex>
+
 namespace AnyDSLInternal {
-class CudaEvent : public Event {
+class CpuEvent : public Event {
 public:
-    CudaEvent(Device* device)
+    CpuEvent(Device* device)
         : Event(device)
     {
     }
 
-    virtual ~CudaEvent() {}
+    virtual ~CpuEvent() {}
 
     AnyDSLResult create(const AnyDSLCreateEventInfo* pInfo) override;
     AnyDSLResult destroy() override;
@@ -21,6 +23,9 @@ public:
     AnyDSLResult sync() override;
 
 private:
-    CUevent mEvent;
+    std::mutex mMutex;
+    std::condition_variable mCV;
+    bool mRecorded;
+    std::chrono::high_resolution_clock::time_point mPointOfRecord;
 };
 } // namespace AnyDSLInternal
