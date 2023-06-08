@@ -70,7 +70,7 @@ static std::unordered_map<int32_t, std::thread> thread_pool;
 static std::vector<int32_t> free_ids;
 static std::mutex thread_lock;
 
-AnyDSL_runtime_std_API void anydsl_std_parallel_for(int32_t num_threads, int32_t lower, int32_t upper, void* args, void* fun)
+AnyDSL_runtime_std_API void anydsl_parallel_for(int32_t num_threads, int32_t lower, int32_t upper, void* args, void* fun)
 {
     // Get number of available hardware threads
     if (num_threads == 0) {
@@ -100,7 +100,7 @@ AnyDSL_runtime_std_API void anydsl_std_parallel_for(int32_t num_threads, int32_t
         pool[i].join();
 }
 
-AnyDSL_runtime_std_API int32_t anydsl_std_spawn_thread(void* args, void* fun)
+AnyDSL_runtime_std_API int32_t anydsl_spawn_thread(void* args, void* fun)
 {
     std::lock_guard<std::mutex> lock(thread_lock);
 
@@ -119,7 +119,7 @@ AnyDSL_runtime_std_API int32_t anydsl_std_spawn_thread(void* args, void* fun)
     return id;
 }
 
-AnyDSL_runtime_std_API void anydsl_std_sync_thread(int32_t id)
+AnyDSL_runtime_std_API void anydsl_sync_thread(int32_t id)
 {
     auto thread = thread_pool.end();
     {
@@ -138,7 +138,7 @@ AnyDSL_runtime_std_API void anydsl_std_sync_thread(int32_t id)
     }
 }
 #else // TBB version
-AnyDSL_runtime_std_API void anydsl_std_parallel_for(int32_t num_threads, int32_t lower, int32_t upper, void* args, void* fun)
+AnyDSL_runtime_std_API void anydsl_parallel_for(int32_t num_threads, int32_t lower, int32_t upper, void* args, void* fun)
 {
     tbb::task_arena limited((num_threads == 0) ? tbb::task_arena::automatic : num_threads);
     tbb::task_group tg;
@@ -163,7 +163,7 @@ static task_group_map task_pool;
 static tbb::concurrent_queue<int32_t> free_ids;
 static std::mutex thread_lock;
 
-AnyDSL_runtime_std_API int32_t anydsl_std_spawn_thread(void* args, void* fun)
+AnyDSL_runtime_std_API int32_t anydsl_spawn_thread(void* args, void* fun)
 {
     std::lock_guard<std::mutex> lock(thread_lock);
     int32_t id = -1;
@@ -183,7 +183,7 @@ AnyDSL_runtime_std_API int32_t anydsl_std_spawn_thread(void* args, void* fun)
     return id;
 }
 
-AnyDSL_runtime_std_API void anydsl_std_sync_thread(int32_t id)
+AnyDSL_runtime_std_API void anydsl_sync_thread(int32_t id)
 {
     auto task = task_pool.end();
     {
