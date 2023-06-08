@@ -9,6 +9,13 @@
 extern "C" {
 #endif
 
+typedef struct AnyDSLDeviceOptionsCuda {
+    AnyDSLStructureType sType;
+    const void* pNext;
+
+    AnyDSLBool dumpCubin; // If true, will dump cubin into the cache directory. Default is false
+} AnyDSLDeviceOptionsCuda;
+
 typedef struct AnyDSLDeviceFeaturesCuda {
     AnyDSLStructureType sType;
     const void* pNext;

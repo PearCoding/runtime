@@ -29,10 +29,18 @@ int main(int argc, char** argv)
     std::stringstream src;
     for (int c = 2; c < argc; ++c) {
         std::ifstream stream(argv[c]);
+        if (!stream) {
+            std::cout << "Could not open '" << argv[c] << "'" << std::endl;
+            return -1;
+        }
         src << stream.rdbuf();
     }
 
     std::string content = src.str();
+    if (content.empty()) {
+        std::cout << "Given source code is empty" << std::endl;
+        return -1;
+    }
 
     AnyDSLJITCompileOptions options = {
         AnyDSL_STRUCTURE_TYPE_JIT_COMPILE_OPTIONS,

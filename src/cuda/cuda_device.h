@@ -13,6 +13,7 @@ public:
     CudaDevice(int devId, Platform* platform)
         : Device(platform)
         , mId(devId)
+        , mDumpCubin(false)
     {
     }
 
@@ -30,6 +31,7 @@ public:
     AnyDSLResult get_handle(AnyDSLDeviceHandleInfo* pInfo) override;
     AnyDSLResult get_info(AnyDSLDeviceInfo* pInfo) override;
     AnyDSLResult get_features(AnyDSLDeviceFeatures* pFeatures) override;
+    AnyDSLResult set_options(AnyDSLDeviceOptions* pOptions) override;
 
     AnyDSLResult sync() override;
 
@@ -37,7 +39,7 @@ public:
     std::tuple<AnyDSLResult, Event*> create_event(const AnyDSLCreateEventInfo* pInfo) override;
 
     AnyDSLResult launch_kernel(const AnyDSLLaunchKernelInfo* pInfo) override;
-    
+
     inline bool isHost() const override { return false; }
 
     inline int id() const { return mId; }
@@ -59,6 +61,8 @@ private:
     int mMajorVersion;
     int mMinorVersion;
     CUjit_target mComputeCapability;
+
+    bool mDumpCubin;
 
     using FunctionMap = std::unordered_map<std::string, CUfunction>;
 

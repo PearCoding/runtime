@@ -128,6 +128,14 @@ AnyDSLResult anydslGetDeviceFeatures(AnyDSLDevice device, AnyDSLDeviceFeatures* 
     return unwrapDeviceHandle(device)->get_features(pDeviceFeatures);
 }
 
+AnyDSLResult anydslSetDeviceOptions(AnyDSLDevice device, AnyDSLDeviceOptions* pDeviceOptions)
+{
+    if (!checkHandle(device))
+        return AnyDSL_INVALID_HANDLE;
+
+    return unwrapDeviceHandle(device)->set_options(pDeviceOptions);
+}
+
 AnyDSLResult anydslSynchronizeDevice(AnyDSLDevice device)
 {
     if (device == AnyDSL_HOST)

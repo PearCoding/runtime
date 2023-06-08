@@ -1,0 +1,59 @@
+fn @gpu_exec_1d(acc: Accelerator, dim: i32, block_size: i32, body: fn (WorkItem) -> ()) {
+    let grid  = (dim, 1, 1);
+    let block = (block_size, 1, 1);
+    acc.exec(body)(grid, block);
+}
+
+#[export]
+fn test_func() -> () {
+    let dev    = 0;
+    let size   = 4096;
+    let acc    = nvvm_accelerator(dev);
+    let buffer = alloc_cuda(dev, size as i64 * sizeof[f32]());
+    let buffer_ptr = anydsl_get_device_ptr(buffer.id) as &mut [f32];
+
+    let event1 = create_event_cuda(dev);
+    event1.record();
+
+    gpu_exec_1d(acc, size, 8, |work_item| {
+        let gid = work_item.gidx();
+        if gid >= size { return() }
+
+        buffer_ptr(gid) = 0;
+    });
+
+    let event2 = create_event_cuda(dev);
+    event2.record();
+
+    gpu_exec_1d(acc, size, 8, |work_item| {
+        let gid = work_item.gidx();
+        if gid >= size { return() }
+
+        buffer_ptr(gid) *= buffer_ptr(gid) * 16;
+    });
+
+    let event3 = create_event_cuda(dev);
+    event3.record();
+
+    synchronize_cuda(dev);
+
+    let timeSpentMS12 = compute_time_between_events(event1, event2);
+    let timeSpentMS23 = compute_time_between_events(event2, event3);
+    let timeSpentMS13 = compute_time_between_events(event1, event3);
+
+    print_string("Time spent (1-2): ");
+    print_f32(timeSpentMS12);
+    print_string("ms\n");
+    print_string("Time spent (2-3): ");
+    print_f32(timeSpentMS23);
+    print_string("ms\n");
+    print_string("Time spent (1-3): ");
+    print_f32(timeSpentMS13);
+    print_string("ms\n");
+    print_flush();
+
+    release_event(event1);
+    release_event(event2);
+    release_event(event3);
+    release(buffer);
+}

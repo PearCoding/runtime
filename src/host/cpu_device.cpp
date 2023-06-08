@@ -125,7 +125,15 @@ AnyDSLResult CpuDevice::get_info(AnyDSLDeviceInfo* pInfo)
 AnyDSLResult CpuDevice::get_features(AnyDSLDeviceFeatures* pFeatures)
 {
     ANYDSL_CHECK_RET_PTR(pFeatures);
-    ANYDSL_CHECK_RET_TYPE(pFeatures, AnyDSL_STRUCTURE_TYPE_FEATURES);
+    ANYDSL_CHECK_RET_TYPE(pFeatures, AnyDSL_STRUCTURE_TYPE_DEVICE_FEATURES);
+
+    return AnyDSL_SUCCESS;
+}
+
+AnyDSLResult CpuDevice::set_options(AnyDSLDeviceOptions* pOptions)
+{
+    ANYDSL_CHECK_RET_PTR(pOptions);
+    ANYDSL_CHECK_RET_TYPE(pOptions, AnyDSL_STRUCTURE_TYPE_DEVICE_OPTIONS);
 
     return AnyDSL_SUCCESS;
 }

@@ -76,7 +76,8 @@ AnyDSLResult CudaDevice::get_features(AnyDSLDeviceFeatures* pFeatures)
     ANYDSL_CHECK_RET_PTR(pFeatures);
     ANYDSL_CHECK_RET_TYPE(pFeatures, AnyDSL_STRUCTURE_TYPE_DEVICE_FEATURES);
 
-    // Nothing to fill here :/
+    // Nothing to fill here
+
     const void* ptr = pFeatures->pNext;
     while (ptr != nullptr) {
         if (checkChainEntry(ptr, AnyDSL_STRUCTURE_TYPE_DEVICE_FEATURES_CUDA)) {
@@ -131,6 +132,25 @@ AnyDSLResult CudaDevice::get_features(AnyDSLDeviceFeatures* pFeatures)
         ptr = nextChainEntry(ptr);
     }
 
+    return AnyDSL_SUCCESS;
+}
+
+AnyDSLResult CudaDevice::set_options(AnyDSLDeviceOptions* pOptions)
+{
+    ANYDSL_CHECK_RET_PTR(pOptions);
+    ANYDSL_CHECK_RET_TYPE(pOptions, AnyDSL_STRUCTURE_TYPE_DEVICE_OPTIONS);
+
+    // Nothing to get here
+
+    const void* ptr = pOptions->pNext;
+    while (ptr != nullptr) {
+        if (checkChainEntry(ptr, AnyDSL_STRUCTURE_TYPE_DEVICE_OPTIONS_CUDA)) {
+            AnyDSLDeviceOptionsCuda* pCudaOptions = (AnyDSLDeviceOptionsCuda*)ptr;
+
+            std::lock_guard _guard(mLock);
+            mDumpCubin = pCudaOptions->dumpCubin == AnyDSL_TRUE;
+        }
+    }
     return AnyDSL_SUCCESS;
 }
 
@@ -403,10 +423,10 @@ AnyDSLResult CudaDevice::create_module(const std::string& filename, const std::s
         info("Compilation info: %s", info_log);
     CHECK_CUDA_RET(err, "cuLinkComplete()");
 
-    // if (dump_binaries) {
-    //     auto cubin_name = filename + ".sm_" + std::to_string(mComputeCapability) + ".cubin";
-    //     runtime_->store_file(cubin_name, static_cast<const std::byte*>(binary), binary_size);
-    // }
+    if (mDumpCubin) {
+        auto cubin_name = filename + ".sm_" + std::to_string(mComputeCapability) + ".cubin";
+        Cache::instance().store_file(cubin_name, static_cast<const std::byte*>(binary), binary_size);
+    }
 
     CHECK_CUDA_RET(cuModuleLoadData(module, binary), "cuModuleLoadData()");
 

@@ -1,0 +1,26 @@
+#[export]
+fn test_func() -> () {
+    let event1 = create_event_cpu();
+    event1.record();
+
+    let mut k = 0:i32;
+    while k < 1024 {
+        k += 1;
+    }
+
+    print_i32(42 * k);
+    print_string("\n");
+    print_flush();
+
+    let event2 = create_event_cpu();
+    event2.record();
+
+    let timeSpentMS = compute_time_between_events(event1, event2);
+    print_string("Time spent: ");
+    print_f32(timeSpentMS);
+    print_string("ms\n");
+    print_flush();
+
+    release_event(event1);
+    release_event(event2);
+}

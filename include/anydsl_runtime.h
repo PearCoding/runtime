@@ -72,7 +72,8 @@ typedef enum AnyDSLStructureType {
     AnyDSL_STRUCTURE_TYPE_GET_DEVICE_REQUEST        = 0x10,
     AnyDSL_STRUCTURE_TYPE_DEVICE_HANDLE_INFO        = 0x11,
     AnyDSL_STRUCTURE_TYPE_DEVICE_FEATURES           = 0x12,
-    AnyDSL_STRUCTURE_TYPE_DEVICE_LAUNCH_KERNEL_INFO = 0x13,
+    AnyDSL_STRUCTURE_TYPE_DEVICE_OPTIONS            = 0x13,
+    AnyDSL_STRUCTURE_TYPE_DEVICE_LAUNCH_KERNEL_INFO = 0x1F,
 
     AnyDSL_STRUCTURE_TYPE_CREATE_BUFFER_INFO      = 0x20,
     AnyDSL_STRUCTURE_TYPE_GET_BUFFER_POINTER_INFO = 0x21,
@@ -88,6 +89,7 @@ typedef enum AnyDSLStructureType {
     AnyDSL_STRUCTURE_TYPE_LOG_REPORT_CALLBACK_CREATE_INFO = 0x1000,
 
     AnyDSL_STRUCTURE_TYPE_DEVICE_FEATURES_CUDA = 0x10000,
+    AnyDSL_STRUCTURE_TYPE_DEVICE_OPTIONS_CUDA  = 0x10001,
 } AnyDSLStructureType;
 
 typedef enum AnyDSLLogReportLevelFlagBits {
@@ -168,6 +170,12 @@ typedef struct AnyDSLDeviceFeatures {
     AnyDSLStructureType sType;
     const void* pNext;
 } AnyDSLDeviceFeatures;
+
+typedef struct AnyDSLDeviceOptions {
+    AnyDSLStructureType sType;
+    const void* pNext;
+    // Highly device specific
+} AnyDSLDeviceOptions;
 
 typedef struct AnyDSLLaunchKernelInfo {
     AnyDSLStructureType sType;
@@ -290,6 +298,8 @@ AnyDSL_runtime_API AnyDSLResult anydslGetDeviceHandle(AnyDSLDevice device, AnyDS
 AnyDSL_runtime_API AnyDSLResult anydslGetDeviceInfo(AnyDSLDevice device, AnyDSLDeviceInfo* pDeviceInfo);
 /// @brief Get features and limits of the device if available.
 AnyDSL_runtime_API AnyDSLResult anydslGetDeviceFeatures(AnyDSLDevice device, AnyDSLDeviceFeatures* pDeviceFeatures);
+/// @brief Set features and options of the device. This changes the properties of all instances of this device!
+AnyDSL_runtime_API AnyDSLResult anydslSetDeviceOptions(AnyDSLDevice device, AnyDSLDeviceOptions* pDeviceOptions);
 /// @brief Wait for all operations on a device to finish.
 /// @deprecated Use anydslSynchronizeEvent instead.
 /// @param device The device to wait for. A call with AnyDSL_HOST will be ignored.

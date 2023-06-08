@@ -2,6 +2,8 @@
 #include "log.h"
 
 namespace AnyDSLInternal {
+// TODO: Maybe make this a bit more lightweight?
+
 AnyDSLResult CpuEvent::create(const AnyDSLCreateEventInfo* pInfo)
 {
     unused(pInfo);
@@ -33,7 +35,7 @@ AnyDSLResult CpuEvent::query(Event* event, AnyDSLQueryEventInfo* pInfo)
         if (!mRecorded || !((CpuEvent*)event)->mRecorded)
             return AnyDSL_NOT_READY;
 
-        pInfo->elapsedTimeMS = (float)std::chrono::duration_cast<std::chrono::milliseconds>(((CpuEvent*)event)->mPointOfRecord - mPointOfRecord).count();
+        pInfo->elapsedTimeMS = (float)std::chrono::duration_cast<std::chrono::microseconds>(((CpuEvent*)event)->mPointOfRecord - mPointOfRecord).count() / 1000.0f;
     } else {
         if (!mRecorded)
             return AnyDSL_NOT_READY;

@@ -16,6 +16,7 @@
 
 static inline AnyDSLDevice unwrapDevice(uint64_t id) { return (AnyDSLDevice)id; }
 static inline AnyDSLBuffer unwrapBuffer(uint64_t id) { return (AnyDSLBuffer)id; }
+static inline AnyDSLEvent unwrapEvent(uint64_t id) { return (AnyDSLEvent)id; }
 
 extern "C" {
 AnyDSL_runtime_std_API void anydsl_std_get_version(uint32_t* major, uint32_t* minor, uint32_t* patch)
@@ -246,4 +247,54 @@ AnyDSL_runtime_std_API void anydsl_std_update_buffer(const char* ptr,
     anydslUpdateBuffer(bufferDst, (AnyDSLDeviceSize)offsetDst, (AnyDSLDeviceSize)size, ptr);
 }
 
+AnyDSL_runtime_std_API uint64_t anydsl_std_create_event(uint64_t deviceHandle)
+{
+    AnyDSLDevice device = unwrapDevice(deviceHandle);
+
+    AnyDSLCreateEventInfo info = {
+        AnyDSL_STRUCTURE_TYPE_CREATE_EVENT_INFO,
+        nullptr
+    };
+
+    AnyDSLEvent event;
+    anydslCreateEvent(device, &info, &event);
+
+    return (uint64_t)event;
+}
+
+AnyDSL_runtime_std_API void anydsl_std_destroy_event(uint64_t eventHandle)
+{
+    AnyDSLEvent event = unwrapEvent(eventHandle);
+    anydslDestroyEvent(event);
+}
+
+AnyDSL_runtime_std_API void anydsl_std_record_event(uint64_t eventHandle)
+{
+    AnyDSLEvent event = unwrapEvent(eventHandle);
+    anydslRecordEvent(event);
+}
+
+AnyDSL_runtime_std_API float anydsl_std_query_event(uint64_t eventStartHandle, uint64_t eventEndHandle)
+{
+    AnyDSLEvent eventStart = unwrapEvent(eventStartHandle);
+    AnyDSLEvent eventEnd   = unwrapEvent(eventEndHandle);
+
+    AnyDSLQueryEventInfo info = {
+        AnyDSL_STRUCTURE_TYPE_QUERY_EVENT_INFO,
+        nullptr,
+        0.0f // Will be set by the function
+    };
+    AnyDSLResult res = anydslQueryEvent(eventStart, eventEnd, &info);
+
+    if (res != AnyDSL_SUCCESS)
+        return -1;
+    else
+        return info.elapsedTimeMS;
+}
+
+AnyDSL_runtime_std_API void anydsl_std_wait_event(uint64_t eventHandle)
+{
+    AnyDSLEvent event = unwrapEvent(eventHandle);
+    anydslSynchronizeEvent(event);
+}
 } // extern "C"

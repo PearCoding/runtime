@@ -72,6 +72,38 @@ fn @fill_buffer_offset(value: u32, dst: Buffer, off_dst: i64, count: i64) = anyd
 fn @fill_buffer(value: u32, dst: Buffer) = fill_buffer_offset(value, dst, 0, dst.size / sizeof[u32]());
 fn @copy_from_host(src: &[u8], size: i64, dst: Buffer) = anydsl_update_buffer(src, dst.id, 0, size);
 
+// Event management
+#[import(cc = "C", name = "anydsl_std_create_event")]  fn anydsl_create_event(_device: u64) -> u64;
+#[import(cc = "C", name = "anydsl_std_destroy_event")] fn anydsl_destroy_event(_event: u64) -> ();
+#[import(cc = "C", name = "anydsl_std_record_event")]  fn anydsl_record_event(_event: u64) -> ();
+#[import(cc = "C", name = "anydsl_std_query_event")]   fn anydsl_query_event(_eventStart: u64, _eventEnd: u64) -> f32;
+#[import(cc = "C", name = "anydsl_std_wait_event")]    fn anydsl_wait_event(_event: u64) -> ();
+
+struct Event {
+    id     : u64,
+    record : fn()->(),
+    wait   : fn()->()
+}
+
+fn @create_event(device: u64) -> Event {
+    let id = anydsl_create_event(device);
+    Event {
+        id     = id,
+        record = @|| { anydsl_record_event(id) },
+        wait   = @|| { anydsl_wait_event(id) },
+    }
+}
+
+fn @release_event(event: Event) = anydsl_destroy_event(event.id);
+
+fn @compute_time_between_events(eventStart: Event, eventEnd: Event) = anydsl_query_event(eventStart.id, eventEnd.id);
+
+fn @create_event_cpu()            = create_event(anydsl_get_device(0, 0));
+fn @create_event_cuda(dev: i32)   = create_event(anydsl_get_device(1, dev));
+fn @create_event_opencl(dev: i32) = create_event(anydsl_get_device(2, dev));
+fn @create_event_hls(dev: i32)    = create_event(anydsl_get_device(2, dev));
+fn @create_event_hsa(dev: i32)    = create_event(anydsl_get_device(3, dev));
+
 // Range and similar stuff
 
 // range, range_step, unroll, unroll_step, etc.
