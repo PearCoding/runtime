@@ -133,9 +133,9 @@ fn @unroll_step_rev(body: fn(i32) -> ()) {
     loop
 }
 
-fn @range(body: fn(i32) -> ()) = @|lower: i32, upper: i32| unroll_step(body)($lower, $upper, 1);
+fn @range(body: fn(i32) -> ())      = @|lower: i32, upper: i32| unroll_step(body)($lower, $upper, 1);
 fn @range_step(body: fn(i32) -> ()) = @|lower: i32, upper: i32, step: i32| unroll_step(body)($lower, $upper, step);
-fn @range_rev(body: fn(i32) -> ()) = @|upper: i32, lower: i32| unroll_step_rev(body)(upper, lower, 1);
+fn @range_rev(body: fn(i32) -> ())  = @|upper: i32, lower: i32| unroll_step_rev(body)(upper, lower, 1);
 
-fn @unroll(body: fn(i32) -> ()) = @|lower: i32, upper: i32| unroll_step(body)(lower, upper, 1);
+fn @unroll(body: fn(i32) -> ())     = @|lower: i32, upper: i32| unroll_step(body)(lower, upper, 1);
 fn @unroll_rev(body: fn(i32) -> ()) = @|upper: i32, lower: i32| unroll_step_rev(body)(upper, lower, 1);

@@ -63,7 +63,7 @@ inline void info(const char* fmt, Args... args)
 template <typename... Args>
 inline void debug(const char* fmt, Args... args)
 {
-#ifdef AnyDSL_runtime_ENABLE_DEBUG_OUTPUT
+#ifdef AnyDSL_RUNTIME_ENABLE_DEBUG_OUTPUT
     print(AnyDSL_LOG_REPORT_LEVEL_DEBUG_BIT, fmt, args...);
 #else
     unused(fmt, args...);

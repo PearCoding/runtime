@@ -34,7 +34,7 @@ inline AnyDSLResult check_cuda_errors(CUresult err, const char* name, const char
         cuGetErrorName(err, &error_name);
         cuGetErrorString(err, &error_string);
         auto msg = std::string(error_name) + ": " + std::string(error_string);
-        error("Driver API function %s (%i) [file %s, line %i]: %s", name, (int)err, file, line, msg);
+        error("Driver API function %s (%i) [file %s, line %i]: %s", name, (int)err, file, line, msg.c_str());
         return AnyDSL_PLATFORM_ERROR;
     }
 

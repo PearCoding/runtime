@@ -262,13 +262,14 @@ AnyDSLResult CudaDevice::load_kernel(const std::string& filename, const std::str
 
         // load file from disk or cache
         auto src_path = canonical;
-        if (src_path.extension() == ".nvvm")
-            src_path.replace_extension(".nvvm.bc");
+        // if (src_path.extension() == ".nvvm")
+        //     src_path.replace_extension(".nvvm.bc");
+
         std::string src_code = Cache::instance().load_file(src_path.string());
 
         // compile src or load from cache
         std::string compute_capability_str = std::to_string(mComputeCapability);
-        std::string ptx                    = canonical.extension() == ".ptx" ? src_code : Cache::instance().load_from_cache(compute_capability_str + src_code);
+        std::string ptx                    = Cache::instance().load_from_cache(compute_capability_str + src_code);
         if (ptx.empty()) {
             const AnyDSLResult compileRes = compile_nvvm(src_path.string(), src_code, &ptx);
             if (compileRes != AnyDSL_SUCCESS)

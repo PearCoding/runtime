@@ -46,4 +46,4 @@
 
 // debug output
 
-#cmakedefine AnyDSL_runtime_ENABLE_DEBUG_OUTPUT
+#cmakedefine AnyDSL_RUNTIME_ENABLE_DEBUG_OUTPUT

@@ -1,7 +1,7 @@
-fn @gpu_exec_1d(acc: Accelerator, dim: i32, block_size: i32, body: fn (WorkItem) -> ()) {
+fn @gpu_exec_1d(acc: Accelerator, name: &[u8], dim: i32, block_size: i32, body: fn (WorkItem) -> ()) {
     let grid  = (dim, 1, 1);
     let block = (block_size, 1, 1);
-    acc.exec(body)(grid, block);
+    acc.exec_named(name, body)(grid, block);
 }
 
 #[export]
@@ -15,7 +15,7 @@ fn test_func() -> () {
     let event1 = create_event_cuda(dev);
     event1.record();
 
-    gpu_exec_1d(acc, size, 8, |work_item| {
+    gpu_exec_1d(acc, "", size, 8, |work_item| {
         let gid = work_item.gidx();
         if gid >= size { return() }
 
@@ -25,7 +25,7 @@ fn test_func() -> () {
     let event2 = create_event_cuda(dev);
     event2.record();
 
-    gpu_exec_1d(acc, size, 8, |work_item| {
+    gpu_exec_1d(acc, "compute", size, 8, |work_item| {
         let gid = work_item.gidx();
         if gid >= size { return() }
 

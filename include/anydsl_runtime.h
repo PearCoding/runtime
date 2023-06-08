@@ -93,15 +93,15 @@ typedef enum AnyDSLStructureType {
 } AnyDSLStructureType;
 
 typedef enum AnyDSLLogReportLevelFlagBits {
-    AnyDSL_LOG_REPORT_LEVEL_DEBUG_BIT   = 0x000,
-    AnyDSL_LOG_REPORT_LEVEL_INFO_BIT    = 0x001,
-    AnyDSL_LOG_REPORT_LEVEL_WARNING_BIT = 0x002,
-    AnyDSL_LOG_REPORT_LEVEL_ERROR_BIT   = 0x004,
+    AnyDSL_LOG_REPORT_LEVEL_DEBUG_BIT   = 0x001,
+    AnyDSL_LOG_REPORT_LEVEL_INFO_BIT    = 0x002,
+    AnyDSL_LOG_REPORT_LEVEL_WARNING_BIT = 0x004,
+    AnyDSL_LOG_REPORT_LEVEL_ERROR_BIT   = 0x008,
     AnyDSL_LOG_REPORT_LEVEL_MAX_ENUM    = 0x7FFFFFFF
 } AnyDSLLogReportLevelFlagBits;
 typedef AnyDSLFlags AnyDSLLogReportLevelFlags;
 
-typedef AnyDSLBool(ANYDSL_API_PTR* PFN_anydslLogReportCallback)(
+typedef void(ANYDSL_API_PTR* PFN_anydslLogReportCallback)(
     AnyDSLLogReportLevelFlags flags,
     const char* pMessage,
     void* pUserData);

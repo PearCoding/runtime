@@ -3,8 +3,34 @@
 #include <iostream>
 #include <sstream>
 
+static void logHandler(AnyDSLLogReportLevelFlags flags,
+                       const char* pMessage,
+                       void* pUserData)
+{
+    if (AnyDSL_CHECK_BIT(flags, AnyDSL_LOG_REPORT_LEVEL_DEBUG_BIT))
+        std::cout << "DEBUG  : ";
+    else if (AnyDSL_CHECK_BIT(flags, AnyDSL_LOG_REPORT_LEVEL_INFO_BIT))
+        std::cout << "INFO   : ";
+    else if (AnyDSL_CHECK_BIT(flags, AnyDSL_LOG_REPORT_LEVEL_WARNING_BIT))
+        std::cout << "WARNING: ";
+    else
+        std::cout << "ERROR  : ";
+
+    std::cout << pMessage << std::endl;
+}
+
 int main(int argc, char** argv)
 {
+    AnyDSLLogReportCallbackCreateInfo logInfo {
+        AnyDSL_STRUCTURE_TYPE_LOG_REPORT_CALLBACK_CREATE_INFO,
+        nullptr,
+        AnyDSL_LOG_REPORT_LEVEL_MAX_ENUM,
+        logHandler,
+        nullptr
+    };
+    AnyDSLLogReportCallback logClb;
+    anydslCreateLogReportCallback(&logInfo, &logClb);
+
     AnyDSLFeatures features = {
         AnyDSL_STRUCTURE_TYPE_FEATURES,
         nullptr

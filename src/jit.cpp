@@ -80,29 +80,30 @@ struct JITSingleton {
             if (!::compile(
                     { "runtime", module_name },
                     { std::string(runtime_srcs), program_str },
-                    world, err_stream))
+                    world, err_stream)) {
                 error("JIT: error while compiling sources");
+            } else {
+                world.opt();
 
-            world.opt();
+                std::string host_triple, host_cpu, host_attr, hls_flags;
+                thorin::DeviceBackends backends(world, opt, debug, hls_flags);
 
-            std::string host_triple, host_cpu, host_attr, hls_flags;
-            thorin::DeviceBackends backends(world, opt, debug, hls_flags);
+                thorin::llvm::CPUCodeGen cg(world, opt, debug, host_triple, host_cpu, host_attr);
+                std::tie(llvm_context, llvm_module) = cg.emit_module();
+                std::stringstream stream;
+                llvm::raw_os_ostream llvm_stream(stream);
+                llvm_module->print(llvm_stream, nullptr);
+                Cache::instance().store_to_cache(program_str, stream.str(), ".llvm");
 
-            thorin::llvm::CPUCodeGen cg(world, opt, debug, host_triple, host_cpu, host_attr);
-            std::tie(llvm_context, llvm_module) = cg.emit_module();
-            std::stringstream stream;
-            llvm::raw_os_ostream llvm_stream(stream);
-            llvm_module->print(llvm_stream, nullptr);
-            Cache::instance().store_to_cache(program_str, stream.str(), ".llvm");
-
-            if (backends.cgs[thorin::DeviceBackends::HLS])
-                error("JIT compilation of hls not supported!");
-            for (auto& cg : backends.cgs) {
-                if (cg) {
-                    std::ostringstream stream;
-                    cg->emit_stream(stream);
-                    Cache::instance().store_to_cache(cg->file_ext() + program_str, stream.str(), cg->file_ext());
-                    Cache::instance().register_file(module_name + cg->file_ext(), stream.str());
+                if (backends.cgs[thorin::DeviceBackends::HLS])
+                    error("JIT compilation of hls not supported!");
+                for (auto& cg : backends.cgs) {
+                    if (cg) {
+                        std::ostringstream stream;
+                        cg->emit_stream(stream);
+                        Cache::instance().store_to_cache(cg->file_ext() + program_str, stream.str(), cg->file_ext());
+                        Cache::instance().register_file(module_name + cg->file_ext(), stream.str());
+                    }
                 }
             }
 
