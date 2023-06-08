@@ -15,7 +15,7 @@
 #[import(cc = "C", name = "anydsl_std_print_flush")]  fn print_flush() -> ();
 
 // Subset of the C interface ported to ours
-#[import(cc = "C", name = "anydsl_std_get_version")]  fn anydsl_get_version(_major: &mut i32, _minor: &mut i32, _patch: &mut i32) -> ();
+#[import(cc = "C", name = "anydsl_std_get_version")] fn anydsl_get_version(_major: &mut i32, _minor: &mut i32, _patch: &mut i32) -> ();
 
 // Basic device management
 // TODO: Missing quite something
@@ -47,23 +47,28 @@ fn @alloc_unified(device: u64, size: i64) = Buffer {
     id   = anydsl_create_buffer(device, size, 0x2),
     size = size,
 };
+
 fn @release(buf: Buffer) = anydsl_destroy_buffer(buf.id);
 
 fn @alloc_cpu(size: i64) = alloc(anydsl_get_device(0, 0), size);
-fn @alloc_cuda(dev: i32, size: i64) = alloc(anydsl_get_device(1, dev), size);
-fn @alloc_cuda_host(dev: i32, size: i64) = alloc_host(anydsl_get_device(1, dev), size);
+
+fn @alloc_cuda(dev: i32, size: i64)         = alloc(anydsl_get_device(1, dev), size);
+fn @alloc_cuda_host(dev: i32, size: i64)    = alloc_host(anydsl_get_device(1, dev), size);
 fn @alloc_cuda_unified(dev: i32, size: i64) = alloc_unified(anydsl_get_device(1, dev), size);
-fn @synchronize_cuda(dev: i32) = anydsl_synchronize(anydsl_get_device(1, dev));
-fn @alloc_opencl(dev: i32, size: i64) = alloc(anydsl_get_device(2, dev), size);
+fn @synchronize_cuda(dev: i32)              = anydsl_synchronize(anydsl_get_device(1, dev));
+
+fn @alloc_opencl(dev: i32, size: i64)         = alloc(anydsl_get_device(2, dev), size);
 fn @alloc_opencl_unified(dev: i32, size: i64) = alloc_unified(anydsl_get_device(2, dev), size);
-fn @synchronize_opencl(dev: i32) = anydsl_synchronize(anydsl_get_device(2, dev));
-fn @alloc_hls(dev: i32, size: i64) -> Buffer { alloc(anydsl_get_device(2, dev), size) }
-fn @alloc_hls_unified(dev: i32, size: i64) -> Buffer { alloc_unified(anydsl_get_device(2, dev), size) }
-fn @synchronize_hls(dev: i32) -> () { anydsl_synchronize(anydsl_get_device(2, dev)) }
-fn @alloc_hsa(dev: i32, size: i64) = alloc(anydsl_get_device(3, dev), size);
-fn @alloc_hsa_host(dev: i32, size: i64) = alloc_host(anydsl_get_device(3, dev), size);
+fn @synchronize_opencl(dev: i32)              = anydsl_synchronize(anydsl_get_device(2, dev));
+
+fn @alloc_hls(dev: i32, size: i64)         = alloc(anydsl_get_device(2, dev), size);
+fn @alloc_hls_unified(dev: i32, size: i64) = alloc_unified(anydsl_get_device(2, dev), size);
+fn @synchronize_hls(dev: i32)              = anydsl_synchronize(anydsl_get_device(2, dev));
+
+fn @alloc_hsa(dev: i32, size: i64)         = alloc(anydsl_get_device(3, dev), size);
+fn @alloc_hsa_host(dev: i32, size: i64)    = alloc_host(anydsl_get_device(3, dev), size);
 fn @alloc_hsa_unified(dev: i32, size: i64) = alloc_unified(anydsl_get_device(3, dev), size);
-fn @synchronize_hsa(dev: i32) = anydsl_synchronize(anydsl_get_device(3, dev));
+fn @synchronize_hsa(dev: i32)              = anydsl_synchronize(anydsl_get_device(3, dev));
 
 fn @copy_offset(src: Buffer, off_src: i64, dst: Buffer, off_dst: i64, size: i64) = anydsl_copy_buffer(src.id, off_src, dst.id, off_dst, size);
 fn @copy(src: Buffer, dst: Buffer) = copy_offset(src, 0, dst, 0, src.size);
@@ -96,6 +101,7 @@ fn @create_event(device: u64) -> Event {
 
 fn @release_event(event: Event) = anydsl_destroy_event(event.id);
 
+// Returns time in milliseconds
 fn @compute_time_between_events(eventStart: Event, eventEnd: Event) = anydsl_query_event(eventStart.id, eventEnd.id);
 
 fn @create_event_cpu()            = create_event(anydsl_get_device(0, 0));
