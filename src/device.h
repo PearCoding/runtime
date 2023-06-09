@@ -29,6 +29,9 @@ public:
     virtual std::tuple<AnyDSLResult, Buffer*> create_buffer(const AnyDSLCreateBufferInfo* pInfo) = 0;
     virtual std::tuple<AnyDSLResult, Event*> create_event(const AnyDSLCreateEventInfo* pInfo)    = 0;
 
+    virtual std::tuple<AnyDSLResult, void*> allocate_memory(size_t size) = 0;
+    virtual AnyDSLResult release_memory(void* ptr)                       = 0;
+
     virtual AnyDSLResult launch_kernel(const AnyDSLLaunchKernelInfo* pInfo) = 0;
 
     virtual bool isHost() const = 0;

@@ -89,7 +89,10 @@ AnyDSL_runtime_std_API void anydsl_std_synchronize(uint64_t deviceHandle)
     anydslSynchronizeDevice(device);
 }
 
-// TODO: Change this to the new interface
+// Wrapper to the old interface
+static inline uint32_t extract_platform(int32_t mask) { return (uint32_t)mask & 0x0F; }
+static inline uint32_t extract_device_num(int32_t mask) { return (uint32_t)mask >> 4; }
+
 enum class KernelArgType : uint8_t { Val = 0,
                                      Ptr,
                                      Struct };
@@ -103,7 +106,7 @@ typedef struct {
     const KernelArgType* types;
 } LaunchParamsArgs;
 
-AnyDSL_runtime_std_API void anydsl_launch_kernel(
+AnyDSL_runtime_std_API void anydsl_std_launch_kernel(
     int32_t mask, const char* file_name, const char* kernel_name,
     const uint32_t* grid, const uint32_t* block,
     void** arg_data,
@@ -113,7 +116,7 @@ AnyDSL_runtime_std_API void anydsl_launch_kernel(
     const uint8_t* arg_types,
     uint32_t num_args)
 {
-    AnyDSLDevice device = unwrapDevice(anydsl_std_get_device(mask & 0x0F, mask >> 4));
+    AnyDSLDevice device = unwrapDevice(anydsl_std_get_device(extract_platform(mask), extract_device_num(mask)));
 
     LaunchParamsArgs args = {
         arg_data,
@@ -135,6 +138,31 @@ AnyDSL_runtime_std_API void anydsl_launch_kernel(
     };
 
     anydslLaunchKernel(device, &info);
+}
+
+AnyDSL_runtime_std_API void* anydsl_std_allocate(int32_t mask, int64_t size)
+{
+    AnyDSLDevice device = unwrapDevice(anydsl_std_get_device(extract_platform(mask), extract_device_num(mask)));
+
+    if (size < 0) {
+        anydslLogReportMessage(AnyDSL_LOG_REPORT_LEVEL_ERROR_BIT, "Trying to allocate with negative size");
+        return nullptr;
+    }
+
+    void* ptr;
+    anydslAllocateMemory(device, (size_t)size, &ptr); // TODO: Check return
+
+    return ptr;
+}
+
+AnyDSL_runtime_std_API void anydsl_std_release(int32_t mask, void* ptr)
+{
+    AnyDSLDevice device = unwrapDevice(anydsl_std_get_device(extract_platform(mask), extract_device_num(mask)));
+
+    if (ptr == nullptr) // Silently ignore
+        return;
+
+    anydslReleaseMemory(device, ptr); // TODO: Check return
 }
 
 AnyDSL_runtime_std_API uint64_t anydsl_std_create_buffer(uint64_t deviceHandle, int64_t size, int32_t flags)

@@ -7,7 +7,9 @@ static void logHandler(AnyDSLLogReportLevelFlags flags,
                        const char* pMessage,
                        void* pUserData)
 {
-    if (AnyDSL_CHECK_BIT(flags, AnyDSL_LOG_REPORT_LEVEL_DEBUG_BIT))
+    if (AnyDSL_CHECK_BIT(flags, AnyDSL_LOG_REPORT_LEVEL_TRACE_BIT))
+        std::cout << "TRACE  : ";
+    else if (AnyDSL_CHECK_BIT(flags, AnyDSL_LOG_REPORT_LEVEL_DEBUG_BIT))
         std::cout << "DEBUG  : ";
     else if (AnyDSL_CHECK_BIT(flags, AnyDSL_LOG_REPORT_LEVEL_INFO_BIT))
         std::cout << "INFO   : ";

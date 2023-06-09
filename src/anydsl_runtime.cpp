@@ -15,7 +15,13 @@
 
 using namespace AnyDSLInternal;
 
-static inline bool checkHandle(void* ptr) { return ptr != nullptr; }
+#define TRACE() \
+    trace("Calling %s [file %s, line %i]", AnyDSL_FUNCTION_NAME, __FILE__, __LINE__)
+
+static inline bool checkHandle(void* ptr)
+{
+    return ptr != nullptr;
+}
 
 static inline Device* unwrapDeviceHandle(AnyDSLDevice device) { return (Device*)device; }
 static inline Buffer* unwrapBufferHandle(AnyDSLBuffer buffer) { return (Buffer*)buffer; }
@@ -24,6 +30,7 @@ static inline Event* unwrapEventHandle(AnyDSLEvent event) { return (Event*)event
 // ----------------------------------------- Runtime
 AnyDSLResult anydslGetVersion(AnyDSLVersion* pVersion)
 {
+    TRACE();
     ANYDSL_CHECK_RET_PTR(pVersion);
 
     // TODO
@@ -36,6 +43,7 @@ AnyDSLResult anydslGetVersion(AnyDSLVersion* pVersion)
 
 AnyDSLResult anydslGetFeatures(AnyDSLFeatures* pFeatures)
 {
+    TRACE();
     ANYDSL_CHECK_RET_PTR(pFeatures);
 
 #ifdef AnyDSL_runtime_HAS_JIT_SUPPORT
@@ -58,6 +66,7 @@ AnyDSLResult anydslGetFeatures(AnyDSLFeatures* pFeatures)
 
 AnyDSLResult anydslEnumerateDevices(size_t* pCount, AnyDSLDeviceInfo* pInfo)
 {
+    TRACE();
     ANYDSL_CHECK_RET_PTR(pCount);
 
     if (pInfo == nullptr) {
@@ -88,6 +97,7 @@ AnyDSLResult anydslEnumerateDevices(size_t* pCount, AnyDSLDeviceInfo* pInfo)
 // ----------------------------------------- Device
 AnyDSLResult anydslGetDevice(const AnyDSLGetDeviceRequest* pRequest, AnyDSLDevice* pDevice)
 {
+    TRACE();
     ANYDSL_CHECK_RET_PTR(pRequest);
     ANYDSL_CHECK_RET_PTR(pDevice);
     ANYDSL_CHECK_RET_TYPE(pRequest, AnyDSL_STRUCTURE_TYPE_GET_DEVICE_REQUEST);
@@ -106,6 +116,7 @@ AnyDSLResult anydslGetDevice(const AnyDSLGetDeviceRequest* pRequest, AnyDSLDevic
 
 AnyDSLResult anydslGetDeviceHandle(AnyDSLDevice device, AnyDSLDeviceHandleInfo* pHandleInfo)
 {
+    TRACE();
     if (!checkHandle(device))
         return AnyDSL_INVALID_HANDLE;
 
@@ -114,6 +125,7 @@ AnyDSLResult anydslGetDeviceHandle(AnyDSLDevice device, AnyDSLDeviceHandleInfo* 
 
 AnyDSLResult anydslGetDeviceInfo(AnyDSLDevice device, AnyDSLDeviceInfo* pDeviceInfo)
 {
+    TRACE();
     if (!checkHandle(device))
         return AnyDSL_INVALID_HANDLE;
 
@@ -122,6 +134,7 @@ AnyDSLResult anydslGetDeviceInfo(AnyDSLDevice device, AnyDSLDeviceInfo* pDeviceI
 
 AnyDSLResult anydslGetDeviceFeatures(AnyDSLDevice device, AnyDSLDeviceFeatures* pDeviceFeatures)
 {
+    TRACE();
     if (!checkHandle(device))
         return AnyDSL_INVALID_HANDLE;
 
@@ -130,6 +143,7 @@ AnyDSLResult anydslGetDeviceFeatures(AnyDSLDevice device, AnyDSLDeviceFeatures* 
 
 AnyDSLResult anydslSetDeviceOptions(AnyDSLDevice device, AnyDSLDeviceOptions* pDeviceOptions)
 {
+    TRACE();
     if (!checkHandle(device))
         return AnyDSL_INVALID_HANDLE;
 
@@ -138,6 +152,7 @@ AnyDSLResult anydslSetDeviceOptions(AnyDSLDevice device, AnyDSLDeviceOptions* pD
 
 AnyDSLResult anydslSynchronizeDevice(AnyDSLDevice device)
 {
+    TRACE();
     if (device == AnyDSL_HOST)
         return AnyDSL_SUCCESS;
 
@@ -149,6 +164,7 @@ AnyDSLResult anydslSynchronizeDevice(AnyDSLDevice device)
 
 AnyDSLResult anydslLaunchKernel(AnyDSLDevice device, const AnyDSLLaunchKernelInfo* pInfo)
 {
+    TRACE();
     if (!checkHandle(device))
         return AnyDSL_INVALID_HANDLE; // Really?
 
@@ -158,6 +174,7 @@ AnyDSLResult anydslLaunchKernel(AnyDSLDevice device, const AnyDSLLaunchKernelInf
 // ----------------------------------------- Buffer
 AnyDSLResult anydslCreateBuffer(AnyDSLDevice device, const AnyDSLCreateBufferInfo* pInfo, AnyDSLBuffer* pBuffer)
 {
+    TRACE();
     ANYDSL_CHECK_RET_PTR(pBuffer);
     ANYDSL_CHECK_RET_PTR(pInfo);
     ANYDSL_CHECK_RET_TYPE(pInfo, AnyDSL_STRUCTURE_TYPE_CREATE_BUFFER_INFO);
@@ -186,6 +203,7 @@ AnyDSLResult anydslCreateBuffer(AnyDSLDevice device, const AnyDSLCreateBufferInf
 
 AnyDSLResult anydslDestroyBuffer(AnyDSLBuffer buffer)
 {
+    TRACE();
     if (!checkHandle(buffer))
         return AnyDSL_INVALID_HANDLE;
 
@@ -197,6 +215,7 @@ AnyDSLResult anydslDestroyBuffer(AnyDSLBuffer buffer)
 
 AnyDSLResult anydslGetBufferPointer(AnyDSLBuffer buffer, AnyDSLGetBufferPointerInfo* pInfo)
 {
+    TRACE();
     if (!checkHandle(buffer))
         return AnyDSL_INVALID_HANDLE;
 
@@ -205,6 +224,7 @@ AnyDSLResult anydslGetBufferPointer(AnyDSLBuffer buffer, AnyDSLGetBufferPointerI
 
 AnyDSLResult anydslCopyBuffer(AnyDSLBuffer bufferSrc, AnyDSLBuffer bufferDst, uint32_t count, const AnyDSLBufferCopy* pRegions)
 {
+    TRACE();
     if (!checkHandle(bufferSrc) || !checkHandle(bufferDst))
         return AnyDSL_INVALID_HANDLE;
 
@@ -213,6 +233,7 @@ AnyDSLResult anydslCopyBuffer(AnyDSLBuffer bufferSrc, AnyDSLBuffer bufferDst, ui
 
 AnyDSLResult anydslFillBuffer(AnyDSLBuffer bufferDst, AnyDSLDeviceSize offset, AnyDSLDeviceSize size, uint32_t data)
 {
+    TRACE();
     if (!checkHandle(bufferDst))
         return AnyDSL_INVALID_HANDLE;
 
@@ -221,6 +242,7 @@ AnyDSLResult anydslFillBuffer(AnyDSLBuffer bufferDst, AnyDSLDeviceSize offset, A
 
 AnyDSLResult anydslUpdateBuffer(AnyDSLBuffer bufferDst, AnyDSLDeviceSize offset, AnyDSLDeviceSize size, const void* pData)
 {
+    TRACE();
     if (!checkHandle(bufferDst))
         return AnyDSL_INVALID_HANDLE;
 
@@ -230,9 +252,57 @@ AnyDSLResult anydslUpdateBuffer(AnyDSLBuffer bufferDst, AnyDSLDeviceSize offset,
     return unwrapBufferHandle(bufferDst)->update(offset, size, pData);
 }
 
+// ----------------------------------------- Raw pointers
+AnyDSLResult anydslAllocateMemory(AnyDSLDevice device, size_t size, void** pPtr)
+{
+    TRACE();
+    if (size == 0)
+        return AnyDSL_INVALID_VALUE;
+    ANYDSL_CHECK_RET_PTR(pPtr);
+
+    if (device == AnyDSL_NULL_HANDLE) {
+        CpuPlatform* cpu = (CpuPlatform*)Runtime::instance().host();
+        const auto pair  = cpu->host()->allocate_memory(size);
+        if (std::get<1>(pair) == nullptr)
+            return std::get<0>(pair);
+
+        *pPtr = std::get<1>(pair);
+        return std::get<0>(pair);
+    } else {
+        if (!checkHandle(device))
+            return AnyDSL_INVALID_HANDLE;
+
+        Device* actualDevice = unwrapDeviceHandle(device);
+        const auto pair      = actualDevice->allocate_memory(size);
+        if (std::get<1>(pair) == nullptr)
+            return std::get<0>(pair);
+
+        *pPtr = std::get<1>(pair);
+        return std::get<0>(pair);
+    }
+}
+
+AnyDSLResult anydslReleaseMemory(AnyDSLDevice device, void* ptr)
+{
+    TRACE();
+    ANYDSL_CHECK_RET_PTR(ptr);
+
+    if (device == AnyDSL_NULL_HANDLE) {
+        CpuPlatform* cpu = (CpuPlatform*)Runtime::instance().host();
+        return cpu->host()->release_memory(ptr);
+    } else {
+        if (!checkHandle(device))
+            return AnyDSL_INVALID_HANDLE;
+
+        Device* actualDevice = unwrapDeviceHandle(device);
+        return actualDevice->release_memory(ptr);
+    }
+}
+
 // ----------------------------------------- Events
 AnyDSLResult anydslCreateEvent(AnyDSLDevice device, const AnyDSLCreateEventInfo* pInfo, AnyDSLEvent* pEvent)
 {
+    TRACE();
     // TODO: Host
 
     if (!checkHandle(device))
@@ -252,6 +322,7 @@ AnyDSLResult anydslCreateEvent(AnyDSLDevice device, const AnyDSLCreateEventInfo*
 
 AnyDSLResult anydslDestroyEvent(AnyDSLEvent event)
 {
+    TRACE();
     if (!checkHandle(event))
         return AnyDSL_INVALID_HANDLE;
 
@@ -263,6 +334,7 @@ AnyDSLResult anydslDestroyEvent(AnyDSLEvent event)
 
 AnyDSLResult anydslRecordEvent(AnyDSLEvent event)
 {
+    TRACE();
     if (!checkHandle(event))
         return AnyDSL_INVALID_HANDLE;
 
@@ -271,6 +343,7 @@ AnyDSLResult anydslRecordEvent(AnyDSLEvent event)
 
 AnyDSLResult anydslQueryEvent(AnyDSLEvent startEvent, AnyDSLEvent endEvent, AnyDSLQueryEventInfo* pInfo)
 {
+    TRACE();
     if (!checkHandle(startEvent))
         return AnyDSL_INVALID_HANDLE;
 
@@ -291,6 +364,7 @@ AnyDSLResult anydslQueryEvent(AnyDSLEvent startEvent, AnyDSLEvent endEvent, AnyD
 
 AnyDSLResult anydslSynchronizeEvent(AnyDSLEvent event)
 {
+    TRACE();
     if (!checkHandle(event))
         return AnyDSL_INVALID_HANDLE;
 
@@ -300,41 +374,49 @@ AnyDSLResult anydslSynchronizeEvent(AnyDSLEvent event)
 // ----------------------------------------- JIT
 AnyDSLResult anydslCompileJIT(const char* program, size_t count, AnyDSLJITModule* pModule, const AnyDSLJITCompileOptions* pOptions, AnyDSLJITCompileResult* pResult)
 {
+    TRACE();
     return JIT::compile(program, count, pModule, pOptions, pResult);
 }
 
 AnyDSLResult anydslDestroyJITModule(AnyDSLJITModule module)
 {
+    TRACE();
     return JIT::destroyModule(module);
 }
 
 AnyDSLResult anydslFreeJITCompileResult(const AnyDSLJITCompileResult* pResult)
 {
+    TRACE();
     return JIT::freeCompileResult(pResult);
 }
 
 AnyDSLResult anydslLookupJIT(AnyDSLJITModule module, const char* function, AnyDSLJITLookupInfo* pInfo)
 {
+    TRACE();
     return JIT::lookup(module, function, pInfo);
 }
 
 AnyDSLResult anydslLinkJITLibrary(AnyDSLJITModule module, size_t count, const AnyDSLJITLinkInfo* pLinkInfo)
 {
+    TRACE();
     return JIT::link(module, count, pLinkInfo);
 }
 
 // ----------------------------------------- Logging
 AnyDSL_runtime_API AnyDSLResult anydslCreateLogReportCallback(const AnyDSLLogReportCallbackCreateInfo* pCreateInfo, AnyDSLLogReportCallback* pCallback)
 {
+    TRACE();
     return Log::instance().registerHandler(pCreateInfo, pCallback);
 }
 
 AnyDSL_runtime_API AnyDSLResult anydslDestroyLogReportCallback(AnyDSLLogReportCallback callback)
 {
+    TRACE();
     return Log::instance().unregisterHandler(callback);
 }
 
 AnyDSL_runtime_API AnyDSLResult anydslLogReportMessage(AnyDSLLogReportLevelFlags flags, const char* pMessage)
 {
+    TRACE();
     return Log::instance().log(flags, pMessage);
 }

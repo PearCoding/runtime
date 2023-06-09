@@ -1,13 +1,25 @@
 #include "cpu_buffer.h"
 #include "device.h"
+#include "runtime.h"
 
 #include <algorithm>
 #include <cstring>
 
+#ifndef PAGE_SIZE
+#define PAGE_SIZE 4096
+#endif
+
 namespace AnyDSLInternal {
 AnyDSLResult CpuBuffer::create(const AnyDSLCreateBufferInfo* pInfo)
 {
-    mMem = new std::byte[pInfo->size];
+    if (AnyDSL_CHECK_BIT(pInfo->flags, AnyDSL_CREATE_BUFFER_MANAGED_BIT)) {
+        mMem = (std::byte*)Runtime::instance().aligned_malloc(pInfo->size, PAGE_SIZE);
+    } else if (AnyDSL_CHECK_BIT(pInfo->flags, AnyDSL_CREATE_BUFFER_HOST_BIT)) {
+        mMem = (std::byte*)Runtime::instance().aligned_malloc(pInfo->size, PAGE_SIZE);
+    } else {
+        mMem = (std::byte*)Runtime::instance().aligned_malloc(pInfo->size, 32);
+    }
+
     if (mMem == nullptr)
         return AnyDSL_OUT_OF_HOST_MEMORY;
 
@@ -17,7 +29,7 @@ AnyDSLResult CpuBuffer::create(const AnyDSLCreateBufferInfo* pInfo)
 AnyDSLResult CpuBuffer::destroy()
 {
     if (mMem != nullptr) {
-        delete[] mMem;
+        Runtime::instance().aligned_free(mMem);
         mMem = nullptr;
     }
 

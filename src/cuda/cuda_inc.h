@@ -16,11 +16,16 @@
 #endif
 
 namespace AnyDSLInternal {
-#define CHECK_NVVM_RET(err, name)                                                                           \
-    if (auto res = AnyDSLInternal::check_nvvm_errors(err, name, __FILE__, __LINE__); res != AnyDSL_SUCCESS) \
+#define CHECK_NVVM(err, name) \
+    AnyDSLInternal::check_nvvm_errors(err, name, __FILE__, __LINE__)
+#define CHECK_CUDA(err, name) \
+    AnyDSLInternal::check_cuda_errors(err, name, __FILE__, __LINE__)
+
+#define CHECK_NVVM_RET(err, name)                                \
+    if (auto res = CHECK_NVVM(err, name); res != AnyDSL_SUCCESS) \
     return res
-#define CHECK_CUDA_RET(err, name)                                                                           \
-    if (auto res = AnyDSLInternal::check_cuda_errors(err, name, __FILE__, __LINE__); res != AnyDSL_SUCCESS) \
+#define CHECK_CUDA_RET(err, name)                                \
+    if (auto res = CHECK_CUDA(err, name); res != AnyDSL_SUCCESS) \
     return res
 
 inline AnyDSLResult check_cuda_errors(CUresult err, const char* name, const char* file, const int line)

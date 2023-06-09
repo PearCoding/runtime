@@ -27,6 +27,12 @@
 #define AnyDSL_runtime_API
 #endif // AnyDSL_runtime_BUILD_SHARED
 
+#ifdef _MSC_VER
+#define AnyDSL_FUNCTION_NAME __FUNCSIG__
+#else
+#define AnyDSL_FUNCTION_NAME __PRETTY_FUNCTION__
+#endif
+
 // CUDA support
 
 #cmakedefine AnyDSL_runtime_CUDA_CXX_STANDARD @AnyDSL_runtime_CUDA_CXX_STANDARD @
@@ -47,3 +53,4 @@
 // debug output
 
 #cmakedefine AnyDSL_RUNTIME_ENABLE_DEBUG_OUTPUT
+#cmakedefine AnyDSL_RUNTIME_ENABLE_TRACE_OUTPUT

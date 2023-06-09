@@ -93,10 +93,11 @@ typedef enum AnyDSLStructureType {
 } AnyDSLStructureType;
 
 typedef enum AnyDSLLogReportLevelFlagBits {
-    AnyDSL_LOG_REPORT_LEVEL_DEBUG_BIT   = 0x001,
-    AnyDSL_LOG_REPORT_LEVEL_INFO_BIT    = 0x002,
-    AnyDSL_LOG_REPORT_LEVEL_WARNING_BIT = 0x004,
-    AnyDSL_LOG_REPORT_LEVEL_ERROR_BIT   = 0x008,
+    AnyDSL_LOG_REPORT_LEVEL_ERROR_BIT   = 0x001,
+    AnyDSL_LOG_REPORT_LEVEL_WARNING_BIT = 0x002,
+    AnyDSL_LOG_REPORT_LEVEL_INFO_BIT    = 0x004,
+    AnyDSL_LOG_REPORT_LEVEL_DEBUG_BIT   = 0x008,
+    AnyDSL_LOG_REPORT_LEVEL_TRACE_BIT   = 0x010,
     AnyDSL_LOG_REPORT_LEVEL_MAX_ENUM    = 0x7FFFFFFF
 } AnyDSLLogReportLevelFlagBits;
 typedef AnyDSLFlags AnyDSLLogReportLevelFlags;
@@ -281,28 +282,36 @@ typedef struct AnyDSLLogReportCallbackCreateInfo {
 
 // -------------------------------------- Functions [Runtime]
 /// @brief Get version of this AnyDSL implementation.
+/// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslGetVersion(AnyDSLVersion* pVersion);
 /// @brief Get features of this AnyDSL implementation.
+/// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslGetFeatures(AnyDSLFeatures* pFeatures);
 /// @brief Enumerate through all available device, beside the host. Set pInfo = NULL to
 /// acquire number of devices available, else pInfo should be an array of AnyDSLDeviceInfo.
+/// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslEnumerateDevices(size_t* pCount, AnyDSLDeviceInfo* pInfo);
 
 // -------------------------------------- Functions [Device]
 /// @brief Get a device for AnyDSL. Keep in mind that this is only to access
 /// information, not to gain control over the device.
+/// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslGetDevice(const AnyDSLGetDeviceRequest* pCreateInfo, AnyDSLDevice* pDevice);
 /// @brief Get internal handle of the device. This might be a CUDA context or similar depending on the device.
+/// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslGetDeviceHandle(AnyDSLDevice device, AnyDSLDeviceHandleInfo* pHandleInfo);
 /// @brief Get information of the device. Same as anydslEnumerateDevices but only for this device.
+/// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslGetDeviceInfo(AnyDSLDevice device, AnyDSLDeviceInfo* pDeviceInfo);
 /// @brief Get features and limits of the device if available.
+/// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslGetDeviceFeatures(AnyDSLDevice device, AnyDSLDeviceFeatures* pDeviceFeatures);
 /// @brief Set features and options of the device. This changes the properties of all instances of this device!
+/// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslSetDeviceOptions(AnyDSLDevice device, AnyDSLDeviceOptions* pDeviceOptions);
 /// @brief Wait for all operations on a device to finish.
-/// @deprecated Use anydslSynchronizeEvent instead.
 /// @param device The device to wait for. A call with AnyDSL_HOST will be ignored.
+/// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslSynchronizeDevice(AnyDSLDevice device);
 
 /// @brief Launch given kernel. The call might be asynchronous depending on the device.
@@ -318,34 +327,53 @@ AnyDSL_runtime_API AnyDSLResult anydslLaunchKernel(AnyDSLDevice device, const An
 /// if a managed buffer on the host is desired.
 /// @param pInfo The info structure describing the size and features of the buffer.
 /// @param pBuffer Pointer to the new created buffer.
-/// @return AnyDSL_SUCCESS if sucessful
+/// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslCreateBuffer(AnyDSLDevice device, const AnyDSLCreateBufferInfo* pInfo, AnyDSLBuffer* pBuffer);
 /// @brief Destroy a buffer previously created by anydslCreateBuffer.
 /// @param buffer The buffer to destroy.
+/// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslDestroyBuffer(AnyDSLBuffer buffer);
 /// @brief Get device specific pointer to the buffer. The returned pointer is only valid for the device.
 /// @param buffer The buffer.
 /// @param pInfo Structure containing the device specific pointer and other information.
+/// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslGetBufferPointer(AnyDSLBuffer buffer, AnyDSLGetBufferPointerInfo* pInfo);
 /// @brief Asynchronous copy of a buffer.
 /// @param bufferSrc The buffer to copy from. Can be the same device as bufferDst or the host.
 /// @param bufferDst The buffer to copy to. Can be the same device as bufferSrc or the host.
 /// @param count Number of regions to copy.
 /// @param pRegions An array of regions to copy.
+/// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslCopyBuffer(AnyDSLBuffer bufferSrc, AnyDSLBuffer bufferDst, uint32_t count, const AnyDSLBufferCopy* pRegions);
 /// @brief Asynchronously fill given buffer with a user given value.
 /// @param bufferDst The buffer the value will be written to.
 /// @param offset Offset inside the buffer.
 /// @param size Size of the region to fill.
 /// @param data User given 4 byte value.
+/// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslFillBuffer(AnyDSLBuffer bufferDst, AnyDSLDeviceSize offset, AnyDSLDeviceSize size, uint32_t data);
 /// @brief Asynchronously update the buffer from data on the host.
 /// @param bufferDst The buffer the data will be copied to.
 /// @param offset Offset inside the buffer.
 /// @param size Size of the region to copy. For proper performance a multiple of 4 is recommend.
 /// @param pData Pointer to a 4 byte aligned memory.
-/// @return
+/// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslUpdateBuffer(AnyDSLBuffer bufferDst, AnyDSLDeviceSize offset, AnyDSLDeviceSize size, const void* pData);
+
+// -------------------------------------- Raw allocations
+/// @brief Allocates memory on the device. This is the same as anydslCreateBuffer (flags=0) but returning a raw pointer.
+/// @param device The device this buffer is bounded to. Use AnyDSL_HOST
+/// if a managed buffer on the host is desired.
+/// @param size The size of the memory block.
+/// @param pPtr Pointer to the pointer pointing at the new memory block.
+/// @return AnyDSL_SUCCESS if sucessful.
+/// @note If possible, use the more secure anydslCreateBuffer interface.
+AnyDSL_runtime_API AnyDSLResult anydslAllocateMemory(AnyDSLDevice device, size_t size, void** pPtr);
+/// @brief Releases a pointer previously created by anydslAllocateMemory.
+/// @param device The device the memory was allocated from. If the device does not match the one which allocated the memory the behaviour is undefined.
+/// @param ptr Pointer to the start of the memory block which is to be released.
+/// @return AnyDSL_SUCCESS if sucessful.
+AnyDSL_runtime_API AnyDSLResult anydslReleaseMemory(AnyDSLDevice device, void* ptr);
 
 // -------------------------------------- Functions [Event]
 /// @brief Create event on a given device.
@@ -357,9 +385,11 @@ AnyDSL_runtime_API AnyDSLResult anydslUpdateBuffer(AnyDSLBuffer bufferDst, AnyDS
 AnyDSL_runtime_API AnyDSLResult anydslCreateEvent(AnyDSLDevice device, const AnyDSLCreateEventInfo* pInfo, AnyDSLEvent* pEvent);
 /// @brief Destroy an event previously created by anydslCreateEvent.
 /// @param event The event to destroy.
+/// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslDestroyEvent(AnyDSLEvent event);
 /// @brief Record an event.
 /// @param event The event to record.
+/// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslRecordEvent(AnyDSLEvent event);
 /// @brief Query information of two events.
 /// @param startEvent The starting event to query. Both events have to be created by the same device.
@@ -369,6 +399,7 @@ AnyDSL_runtime_API AnyDSLResult anydslRecordEvent(AnyDSLEvent event);
 AnyDSL_runtime_API AnyDSLResult anydslQueryEvent(AnyDSLEvent startEvent, AnyDSLEvent endEvent, AnyDSLQueryEventInfo* pInfo);
 /// @brief Wait on the host for the event to finish.
 /// @param event Event to wait for on the host.
+/// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslSynchronizeEvent(AnyDSLEvent event);
 
 // -------------------------------------- Functions [JIT]
@@ -378,18 +409,23 @@ AnyDSL_runtime_API AnyDSLResult anydslSynchronizeEvent(AnyDSLEvent event);
 /// @param pModule Pointer to the newly created jit module. Should be freed with anydslDestroyJITModule.
 /// @param pOptions Pointer to a structure containing options and properties.
 /// @param pResult Optional pointer to a structure containing additional information. Set it to NULL if not desired. Has to be freed with anydslFreeJITCompileResult if used.
+/// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslCompileJIT(const char* program, size_t count, AnyDSLJITModule* pModule, const AnyDSLJITCompileOptions* pOptions, AnyDSLJITCompileResult* pResult);
 /// @brief Destroy a jit module previously created by anydslCompileJIT.
+/// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslDestroyJITModule(AnyDSLJITModule module);
 /// @brief Free a AnyDSLJITCompileResult acquired by anydslCompileJIT.
+/// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslFreeJITCompileResult(const AnyDSLJITCompileResult* pResult);
 /// @brief Lookup a function inside a jit module and return it via pInfo. The given
 /// function name has to be a null-terminated string.
+/// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslLookupJIT(AnyDSLJITModule module, const char* function, AnyDSLJITLookupInfo* pInfo);
 /// @brief Link an external library to the jit module. Due to the unfortunate nature of the internal machine runtime, this might affect other jit modules as well.
 /// @param module Currently unnused.
 /// @param count Number of AnyDSLJITLinkInfo entries.
 /// @param pLinkInfo An array of libraries to link to.
+/// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslLinkJITLibrary(AnyDSLJITModule module, size_t count, const AnyDSLJITLinkInfo* pLinkInfo);
 
 // TODO: Dump binary from jit module, allow loading etc

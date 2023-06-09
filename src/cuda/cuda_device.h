@@ -38,6 +38,9 @@ public:
     std::tuple<AnyDSLResult, Buffer*> create_buffer(const AnyDSLCreateBufferInfo* pInfo) override;
     std::tuple<AnyDSLResult, Event*> create_event(const AnyDSLCreateEventInfo* pInfo) override;
 
+    std::tuple<AnyDSLResult, void*> allocate_memory(size_t size) override;
+    AnyDSLResult release_memory(void* ptr) override;
+
     AnyDSLResult launch_kernel(const AnyDSLLaunchKernelInfo* pInfo) override;
 
     inline bool isHost() const override { return false; }

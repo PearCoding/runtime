@@ -2,6 +2,7 @@
 #include "cpu_buffer.h"
 #include "cpu_event.h"
 #include "log.h"
+#include "runtime.h"
 #include "utils.h"
 
 #include <algorithm>
@@ -163,6 +164,22 @@ std::tuple<AnyDSLResult, Event*> CpuDevice::create_event(const AnyDSLCreateEvent
 
     AnyDSLResult res = event->create(pInfo);
     return { res, event };
+}
+
+std::tuple<AnyDSLResult, void*> CpuDevice::allocate_memory(size_t size)
+{
+    void* ptr = Runtime::instance().aligned_malloc(size, 32);
+    return { ptr != nullptr ? AnyDSL_SUCCESS : AnyDSL_OUT_OF_HOST_MEMORY, ptr };
+}
+
+AnyDSLResult CpuDevice::release_memory(void* ptr)
+{
+    if (ptr == nullptr)
+        return AnyDSL_INVALID_POINTER;
+
+    Runtime::instance().aligned_free(ptr);
+
+    return AnyDSL_SUCCESS;
 }
 
 AnyDSLResult CpuDevice::launch_kernel(const AnyDSLLaunchKernelInfo* pInfo)

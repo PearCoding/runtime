@@ -186,6 +186,25 @@ std::tuple<AnyDSLResult, Event*> CudaDevice::create_event(const AnyDSLCreateEven
     return { res, event };
 }
 
+std::tuple<AnyDSLResult, void*> CudaDevice::allocate_memory(size_t size)
+{
+    CudaContextGuard ctx(this);
+
+    CUdeviceptr mem;
+    CUresult err     = cuMemAlloc(&mem, size);
+    AnyDSLResult res = CHECK_CUDA(err, "cuMemAlloc()");
+
+    return { res, reinterpret_cast<void*>(mem) };
+}
+
+AnyDSLResult CudaDevice::release_memory(void* ptr)
+{
+    CudaContextGuard ctx(this);
+    CUresult err = cuMemFree((CUdeviceptr)ptr);
+    CHECK_CUDA_RET(err, "cuMemFree()");
+    return AnyDSL_SUCCESS;
+}
+
 AnyDSLResult CudaDevice::launch_kernel(const AnyDSLLaunchKernelInfo* pInfo)
 {
     // TODO: Add option to gather information about the functions (like reg size etc)

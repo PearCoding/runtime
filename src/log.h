@@ -69,4 +69,14 @@ inline void debug(const char* fmt, Args... args)
     unused(fmt, args...);
 #endif
 }
+
+template <typename... Args>
+inline void trace(const char* fmt, Args... args)
+{
+#ifdef AnyDSL_RUNTIME_ENABLE_TRACE_OUTPUT
+    print(AnyDSL_LOG_REPORT_LEVEL_TRACE_BIT, fmt, args...);
+#else
+    unused(fmt, args...);
+#endif
+}
 } // namespace AnyDSLInternal
