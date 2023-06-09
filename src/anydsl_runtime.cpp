@@ -240,7 +240,7 @@ AnyDSLResult anydslFillBuffer(AnyDSLBuffer bufferDst, AnyDSLDeviceSize offset, A
     return unwrapBufferHandle(bufferDst)->fill(offset, size, data);
 }
 
-AnyDSLResult anydslUpdateBuffer(AnyDSLBuffer bufferDst, AnyDSLDeviceSize offset, AnyDSLDeviceSize size, const void* pData)
+AnyDSLResult anydslCopyBufferFromHost(AnyDSLBuffer bufferDst, AnyDSLDeviceSize offset, AnyDSLDeviceSize size, const void* pData)
 {
     TRACE();
     if (!checkHandle(bufferDst))
@@ -249,7 +249,19 @@ AnyDSLResult anydslUpdateBuffer(AnyDSLBuffer bufferDst, AnyDSLDeviceSize offset,
     if (pData == nullptr)
         return AnyDSL_INVALID_POINTER;
 
-    return unwrapBufferHandle(bufferDst)->update(offset, size, pData);
+    return unwrapBufferHandle(bufferDst)->copy_from_host(offset, size, pData);
+}
+
+AnyDSLResult anydslCopyBufferToHost(AnyDSLBuffer bufferSrc, AnyDSLDeviceSize offset, AnyDSLDeviceSize size, void* pData)
+{
+    TRACE();
+    if (!checkHandle(bufferSrc))
+        return AnyDSL_INVALID_HANDLE;
+
+    if (pData == nullptr)
+        return AnyDSL_INVALID_POINTER;
+
+    return unwrapBufferHandle(bufferSrc)->copy_to_host(offset, size, pData);
 }
 
 // ----------------------------------------- Raw pointers

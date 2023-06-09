@@ -23,6 +23,7 @@ class Device {
 public:
     Device(Platform platform = Platform::Host, int32_t num = 0)
         : mNum(num)
+        , mIsHost(platform == Platform::Host)
     {
         AnyDSLGetDeviceRequest info = {
             AnyDSL_STRUCTURE_TYPE_GET_DEVICE_REQUEST,
@@ -35,10 +36,12 @@ public:
     }
 
     inline AnyDSLDevice handle() const { return mHandle; }
+    inline bool isHost() const { return mIsHost; }
 
 protected:
     int32_t mNum;
     AnyDSLDevice mHandle;
+    bool mIsHost;
 };
 
 template <typename T>
@@ -124,7 +127,8 @@ protected:
             sizeof(T) * size,
             0
         };
-        anydslCreateBuffer(mDevice.handle(), &info, &mBuffer); // TODO: Check return value
+        if (anydslCreateBuffer(mDevice.handle(), &info, &mBuffer) != AnyDSL_SUCCESS)
+            return;
 
         AnyDSLGetBufferPointerInfo ptrInfo = {
             AnyDSL_STRUCTURE_TYPE_GET_BUFFER_POINTER_INFO,
@@ -151,24 +155,24 @@ protected:
 };
 
 template <typename T>
-void copy(const Array<T>& a, int64_t offset_a, Array<T>& b, int64_t offset_b, int64_t size)
+void copy(const Array<T>& src, int64_t offset_src, Array<T>& dst, int64_t offset_dst, int64_t size)
 {
     AnyDSLBufferCopy region = {
-        offset_a, offset_b, a.size() * sizeof(T)
+        offset_src, offset_dst, src.size() * sizeof(T)
     };
-    anydslCopyBuffer(a.handle(), b.handle(), 1, &region);
+    anydslCopyBuffer(src.handle(), dst.handle(), 1, &region);
 }
 
 template <typename T>
-void copy(const Array<T>& a, Array<T>& b, int64_t size)
+void copy(const Array<T>& src, Array<T>& dst, int64_t size)
 {
-    copy(a, 0, b, 0, size);
+    copy(src, 0, dst, 0, size);
 }
 
 template <typename T>
-void copy(const Array<T>& a, Array<T>& b)
+void copy(const Array<T>& src, Array<T>& dst)
 {
-    copy(a, b, a.size());
+    copy(src, dst, src.size());
 }
 
 class Event {

@@ -257,22 +257,40 @@ AnyDSL_runtime_std_API void anydsl_std_fill_buffer(uint32_t value,
     anydslFillBuffer(bufferDst, (AnyDSLDeviceSize)offsetDst, (AnyDSLDeviceSize)size, value);
 }
 
-AnyDSL_runtime_std_API void anydsl_std_update_buffer(const char* ptr,
-                                                     uint64_t bufferDstHandle, int64_t offsetDst,
-                                                     int64_t size)
+AnyDSL_runtime_std_API void anydsl_std_copy_buffer_from_host(const void* ptr,
+                                                             uint64_t bufferDstHandle, int64_t offsetDst,
+                                                             int64_t size)
 {
     if (size < 0) {
-        anydslLogReportMessage(AnyDSL_LOG_REPORT_LEVEL_ERROR_BIT, "Trying to fill buffer with negative size");
+        anydslLogReportMessage(AnyDSL_LOG_REPORT_LEVEL_ERROR_BIT, "Trying to copy buffer with negative size");
         return;
     }
 
     if (offsetDst < 0) {
-        anydslLogReportMessage(AnyDSL_LOG_REPORT_LEVEL_ERROR_BIT, "Trying to use fill buffer with negative offsets");
+        anydslLogReportMessage(AnyDSL_LOG_REPORT_LEVEL_ERROR_BIT, "Trying to use copy buffer with negative offsets");
         return;
     }
 
     AnyDSLBuffer bufferDst = unwrapBuffer(bufferDstHandle);
-    anydslUpdateBuffer(bufferDst, (AnyDSLDeviceSize)offsetDst, (AnyDSLDeviceSize)size, ptr);
+    anydslCopyBufferFromHost(bufferDst, (AnyDSLDeviceSize)offsetDst, (AnyDSLDeviceSize)size, ptr);
+}
+
+AnyDSL_runtime_std_API void anydsl_std_copy_buffer_to_host(void* ptr,
+                                                           uint64_t bufferSrcHandle, int64_t offsetSrc,
+                                                           int64_t size)
+{
+    if (size < 0) {
+        anydslLogReportMessage(AnyDSL_LOG_REPORT_LEVEL_ERROR_BIT, "Trying to copy buffer with negative size");
+        return;
+    }
+
+    if (offsetSrc < 0) {
+        anydslLogReportMessage(AnyDSL_LOG_REPORT_LEVEL_ERROR_BIT, "Trying to use copy buffer with negative offsets");
+        return;
+    }
+
+    AnyDSLBuffer bufferSrc = unwrapBuffer(bufferSrcHandle);
+    anydslCopyBufferToHost(bufferSrc, (AnyDSLDeviceSize)offsetSrc, (AnyDSLDeviceSize)size, ptr);
 }
 
 AnyDSL_runtime_std_API uint64_t anydsl_std_create_event(uint64_t deviceHandle)

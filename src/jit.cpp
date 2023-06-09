@@ -77,11 +77,14 @@ struct JITSingleton {
             thorin::World world(module_name);
             world.set(log_level);
             world.set(std::make_shared<thorin::Stream>(err_stream));
+
+            bool good = true;
             if (!::compile(
                     { "runtime", module_name },
                     { std::string(runtime_srcs), program_str },
                     world, err_stream)) {
                 error("JIT: error while compiling sources");
+                good = false;
             } else {
                 world.opt();
 
@@ -117,6 +120,9 @@ struct JITSingleton {
                     pResult->logOutput = nullptr;
                 }
             }
+
+            if (!good)
+                return -1;
         } else {
             llvm::SMDiagnostic diagnostic_err;
             llvm_context = std::make_unique<llvm::LLVMContext>();

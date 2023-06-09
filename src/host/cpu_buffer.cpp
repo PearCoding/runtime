@@ -58,15 +58,21 @@ AnyDSLResult CpuBuffer::copy_to(Buffer* dst, uint32_t count, const AnyDSLBufferC
     return AnyDSL_SUCCESS;
 }
 
-AnyDSLResult CpuBuffer::fill(AnyDSLDeviceSize offset, AnyDSLDeviceSize size, uint32_t data)
+AnyDSLResult CpuBuffer::fill(AnyDSLDeviceSize offset, AnyDSLDeviceSize count, uint32_t data)
 {
-    std::fill_n((uint32_t*)(mMem + offset), size, data);
+    std::fill_n((uint32_t*)(mMem + offset), count, data);
     return AnyDSL_SUCCESS;
 }
 
-AnyDSLResult CpuBuffer::update(AnyDSLDeviceSize offset, AnyDSLDeviceSize size, const void* pData)
+AnyDSLResult CpuBuffer::copy_from_host(AnyDSLDeviceSize offset, AnyDSLDeviceSize size, const void* pData)
 {
     std::memcpy(mMem + offset, pData, size);
+    return AnyDSL_SUCCESS;
+}
+
+AnyDSLResult CpuBuffer::copy_to_host(AnyDSLDeviceSize offset, AnyDSLDeviceSize size, void* pData)
+{
+    std::memcpy(pData, mMem + offset, size);
     return AnyDSL_SUCCESS;
 }
 

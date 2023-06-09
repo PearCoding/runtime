@@ -100,17 +100,17 @@ AnyDSLResult CudaBuffer::copy_to(Buffer* dst, uint32_t count, const AnyDSLBuffer
     return AnyDSL_SUCCESS;
 }
 
-AnyDSLResult CudaBuffer::fill(AnyDSLDeviceSize offset, AnyDSLDeviceSize size, uint32_t data)
+AnyDSLResult CudaBuffer::fill(AnyDSLDeviceSize offset, AnyDSLDeviceSize count, uint32_t data)
 {
     CudaContextGuard ctx(mDevice);
 
-    CUresult err = cuMemsetD32(mMem + offset, data, size);
+    CUresult err = cuMemsetD32(mMem + offset, data, count);
     CHECK_CUDA_RET(err, "cuMemsetD32()");
 
     return AnyDSL_SUCCESS;
 }
 
-AnyDSLResult CudaBuffer::update(AnyDSLDeviceSize offset, AnyDSLDeviceSize size, const void* pData)
+AnyDSLResult CudaBuffer::copy_from_host(AnyDSLDeviceSize offset, AnyDSLDeviceSize size, const void* pData)
 {
     CudaContextGuard ctx(mDevice);
 
@@ -121,4 +121,14 @@ AnyDSLResult CudaBuffer::update(AnyDSLDeviceSize offset, AnyDSLDeviceSize size, 
     return AnyDSL_SUCCESS;
 }
 
+AnyDSLResult CudaBuffer::copy_to_host(AnyDSLDeviceSize offset, AnyDSLDeviceSize size, void* pData)
+{
+    CudaContextGuard ctx(mDevice);
+
+    CUdeviceptr mem = mMem + offset;
+    CUresult err    = cuMemcpyDtoH(pData, mem, size);
+    CHECK_CUDA_RET(err, "cuMemcpyDtoH()");
+
+    return AnyDSL_SUCCESS;
+}
 } // namespace AnyDSLInternal

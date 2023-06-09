@@ -28,7 +28,8 @@
 #[import(cc = "C", name = "anydsl_std_get_device_ptr")] fn anydsl_get_device_ptr(_buffer: u64) -> &[i8];
 #[import(cc = "C", name = "anydsl_std_copy_buffer")]    fn anydsl_copy_buffer(_bufferSrc: u64, _offsetSrc: i64, _bufferDst: u64, _offsetDst: i64, _size: i64) -> ();
 #[import(cc = "C", name = "anydsl_std_fill_buffer")]    fn anydsl_fill_buffer(_value: u32, _bufferDst: u64, _offsetDst: i64, _size: i64) -> ();
-#[import(cc = "C", name = "anydsl_std_update_buffer")]  fn anydsl_update_buffer(_ptr: &[u8], _bufferDst: u64, _offsetDst: i64, _size: i64) -> ();
+#[import(cc = "C", name = "anydsl_std_copy_buffer_from_host")] fn anydsl_copy_buffer_from_host(_ptr: &[i8], _bufferDst: u64, _offsetDst: i64, _size: i64) -> ();
+#[import(cc = "C", name = "anydsl_std_copy_buffer_to_host")]   fn anydsl_copy_buffer_to_host(_ptr: &mut [i8], _bufferSrc: u64, _offsetSrc: i64, _size: i64) -> ();
 
 struct Buffer {
     size : i64,
@@ -75,7 +76,8 @@ fn @copy(src: Buffer, dst: Buffer) = copy_offset(src, 0, dst, 0, src.size);
 
 fn @fill_buffer_offset(value: u32, dst: Buffer, off_dst: i64, count: i64) = anydsl_fill_buffer(value, dst.id, off_dst, count);
 fn @fill_buffer(value: u32, dst: Buffer) = fill_buffer_offset(value, dst, 0, dst.size / sizeof[u32]());
-fn @copy_from_host(src: &[u8], size: i64, dst: Buffer) = anydsl_update_buffer(src, dst.id, 0, size);
+fn @copy_from_host(src: &[i8], dst: Buffer, size: i64)   = anydsl_copy_buffer_from_host(src, dst.id, 0, size);
+fn @copy_to_host(src: Buffer, dst: &mut [i8], size: i64) = anydsl_copy_buffer_to_host(dst, src.id, 0, size);
 
 // Event management
 #[import(cc = "C", name = "anydsl_std_create_event")]  fn anydsl_create_event(_device: u64) -> u64;

@@ -348,17 +348,24 @@ AnyDSL_runtime_API AnyDSLResult anydslCopyBuffer(AnyDSLBuffer bufferSrc, AnyDSLB
 /// @brief Asynchronously fill given buffer with a user given value.
 /// @param bufferDst The buffer the value will be written to.
 /// @param offset Offset inside the buffer.
-/// @param size Size of the region to fill.
+/// @param count Number of elements to fill the region with. Keep in mind that an element this is not one byte, but four.
 /// @param data User given 4 byte value.
 /// @return AnyDSL_SUCCESS if sucessful.
-AnyDSL_runtime_API AnyDSLResult anydslFillBuffer(AnyDSLBuffer bufferDst, AnyDSLDeviceSize offset, AnyDSLDeviceSize size, uint32_t data);
-/// @brief Asynchronously update the buffer from data on the host.
+AnyDSL_runtime_API AnyDSLResult anydslFillBuffer(AnyDSLBuffer bufferDst, AnyDSLDeviceSize offset, AnyDSLDeviceSize count, uint32_t data);
+/// @brief Asynchronously copy the buffer from the host.
 /// @param bufferDst The buffer the data will be copied to.
 /// @param offset Offset inside the buffer.
 /// @param size Size of the region to copy. For proper performance a multiple of 4 is recommend.
 /// @param pData Pointer to a 4 byte aligned memory.
 /// @return AnyDSL_SUCCESS if sucessful.
-AnyDSL_runtime_API AnyDSLResult anydslUpdateBuffer(AnyDSLBuffer bufferDst, AnyDSLDeviceSize offset, AnyDSLDeviceSize size, const void* pData);
+AnyDSL_runtime_API AnyDSLResult anydslCopyBufferFromHost(AnyDSLBuffer bufferDst, AnyDSLDeviceSize offset, AnyDSLDeviceSize size, const void* pData);
+/// @brief Asynchronously copy the buffer to the host.
+/// @param bufferSrc The buffer the data will be copied from.
+/// @param offset Offset inside the buffer.
+/// @param size Size of the region to copy. For proper performance a multiple of 4 is recommend.
+/// @param pData Pointer to a 4 byte aligned memory.
+/// @return AnyDSL_SUCCESS if sucessful.
+AnyDSL_runtime_API AnyDSLResult anydslCopyBufferToHost(AnyDSLBuffer bufferSrc, AnyDSLDeviceSize offset, AnyDSLDeviceSize size, void* pData);
 
 // -------------------------------------- Raw allocations
 /// @brief Allocates memory on the device. This is the same as anydslCreateBuffer (flags=0) but returning a raw pointer.
@@ -405,12 +412,12 @@ AnyDSL_runtime_API AnyDSLResult anydslSynchronizeEvent(AnyDSLEvent event);
 // -------------------------------------- Functions [JIT]
 /// @brief Compile a program and create a jit module for it.
 /// @param program A string containing the actual program.
-/// @param count Size of the string containing the program.
+/// @param size Size of the string containing the program.
 /// @param pModule Pointer to the newly created jit module. Should be freed with anydslDestroyJITModule.
 /// @param pOptions Pointer to a structure containing options and properties.
 /// @param pResult Optional pointer to a structure containing additional information. Set it to NULL if not desired. Has to be freed with anydslFreeJITCompileResult if used.
 /// @return AnyDSL_SUCCESS if sucessful.
-AnyDSL_runtime_API AnyDSLResult anydslCompileJIT(const char* program, size_t count, AnyDSLJITModule* pModule, const AnyDSLJITCompileOptions* pOptions, AnyDSLJITCompileResult* pResult);
+AnyDSL_runtime_API AnyDSLResult anydslCompileJIT(const char* program, size_t size, AnyDSLJITModule* pModule, const AnyDSLJITCompileOptions* pOptions, AnyDSLJITCompileResult* pResult);
 /// @brief Destroy a jit module previously created by anydslCompileJIT.
 /// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslDestroyJITModule(AnyDSLJITModule module);
