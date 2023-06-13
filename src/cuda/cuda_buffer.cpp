@@ -76,7 +76,7 @@ AnyDSLResult CudaBuffer::copy_to(Buffer* dst, uint32_t count, const AnyDSLBuffer
             CUresult err        = cuMemcpyDtoD(dst_mem, src_mem, pRegions[i].size);
             CHECK_CUDA_RET(err, "cuMemcpyDtoD()");
         }
-    } else if (dst->device() == (Device*)AnyDSL_HOST || dst->device()->isHost()) {
+    } else if (dst->device()->isHost()) {
         // Device to host
         CudaContextGuard ctx(mDevice);
         for (uint32_t i = 0; i < count; ++i) {

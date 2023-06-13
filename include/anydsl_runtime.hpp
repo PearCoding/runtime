@@ -51,6 +51,7 @@ public:
         : mData(nullptr)
         , mSize(0)
         , mDevice()
+        , mBuffer(AnyDSL_NULL_HANDLE)
     {
     }
 
@@ -60,7 +61,10 @@ public:
     }
 
     Array(const Device& dev, int64_t size)
-        : mDevice(dev)
+        : mData(nullptr)
+        , mSize(0)
+        , mDevice(dev)
+        , mBuffer(AnyDSL_NULL_HANDLE)
     {
         allocate(size);
     }
@@ -69,17 +73,21 @@ public:
         : mData(other.mData)
         , mSize(other.mSize)
         , mDevice(other.mDevice)
+        , mBuffer(other.mBuffer)
     {
-        other.mData = nullptr;
+        other.mData   = nullptr;
+        other.mBuffer = AnyDSL_NULL_HANDLE;
     }
 
     Array& operator=(Array&& other)
     {
         deallocate();
-        mDevice     = other.mDevice;
-        mSize       = other.mSize;
-        mData       = other.mData;
-        other.mData = nullptr;
+        mDevice       = other.mDevice;
+        mSize         = other.mSize;
+        mData         = other.mData;
+        mBuffer       = other.mBuffer;
+        other.mData   = nullptr;
+        other.mBuffer = AnyDSL_NULL_HANDLE;
         return *this;
     }
 
@@ -116,8 +124,8 @@ public:
 protected:
     void allocate(int64_t size)
     {
-        if (!mData)
-            deallocate();
+        // Deallocate if already allocated
+        deallocate();
 
         mSize = size;
 
@@ -142,9 +150,10 @@ protected:
 
     void deallocate()
     {
-        if (mData) {
+        if (mData != nullptr) {
             anydslDestroyBuffer(mBuffer);
-            mData = nullptr;
+            mData   = nullptr;
+            mBuffer = AnyDSL_NULL_HANDLE;
         }
     }
 

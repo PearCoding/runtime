@@ -1,8 +1,18 @@
 #pragma once
 
 #include "anydsl_runtime.h"
+#include "anydsl_runtime_internal_config.h"
 
 namespace AnyDSLInternal {
+#ifdef AnyDSL_RUNTIME_DEBUG
+#define HANDLE_ERROR(res) AnyDSLInternal::handleError(res, AnyDSL_FUNCTION_NAME, __FILE__, __LINE__)
+#else
+#define HANDLE_ERROR(res) AnyDSLInternal::handleError(res, AnyDSL_FUNCTION_NAME)
+#endif
+
+AnyDSLResult handleError(AnyDSLResult result, const char* func_name, const char* file, int line);
+AnyDSLResult handleError(AnyDSLResult result, const char* func_name);
+
 /// @brief Iterate through the chain until type is found.
 /// @param ptr A pointer to a structure type with AnyDSLStructureType as its first entry, and a void* pointer as next.
 /// @param type The type to search for.
@@ -19,11 +29,12 @@ bool checkChainEntry(const void* ptr, AnyDSLStructureType type);
 
 const void* nextChainEntry(const void* ptr);
 
-#define ANYDSL_CHECK_RET_TYPE(ptr, type)                                               \
+#define CHECK_RET_TYPE(ptr, type)                                                      \
     if (auto res = AnyDSLInternal::expectChainEntry(ptr, type); res != AnyDSL_SUCCESS) \
-    return res
+    return HANDLE_ERROR(res)
 
-#define ANYDSL_CHECK_RET_PTR(ptr) \
-    if (ptr == nullptr)           \
-    return AnyDSL_INVALID_POINTER
+#define CHECK_RET_PTR(ptr) \
+    if (ptr == nullptr)    \
+    return HANDLE_ERROR(AnyDSL_INVALID_POINTER)
+
 } // namespace AnyDSLInternal

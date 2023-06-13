@@ -99,8 +99,8 @@ AnyDSLResult CpuDevice::init()
 
 AnyDSLResult CpuDevice::get_handle(AnyDSLDeviceHandleInfo* pInfo)
 {
-    ANYDSL_CHECK_RET_PTR(pInfo);
-    ANYDSL_CHECK_RET_TYPE(pInfo, AnyDSL_STRUCTURE_TYPE_DEVICE_HANDLE_INFO);
+    CHECK_RET_PTR(pInfo);
+    CHECK_RET_TYPE(pInfo, AnyDSL_STRUCTURE_TYPE_DEVICE_HANDLE_INFO);
 
     pInfo->pHandle = nullptr;
 
@@ -109,8 +109,8 @@ AnyDSLResult CpuDevice::get_handle(AnyDSLDeviceHandleInfo* pInfo)
 
 AnyDSLResult CpuDevice::get_info(AnyDSLDeviceInfo* pInfo)
 {
-    ANYDSL_CHECK_RET_PTR(pInfo);
-    ANYDSL_CHECK_RET_TYPE(pInfo, AnyDSL_STRUCTURE_TYPE_DEVICE_INFO);
+    CHECK_RET_PTR(pInfo);
+    CHECK_RET_TYPE(pInfo, AnyDSL_STRUCTURE_TYPE_DEVICE_INFO);
     // TODO: Iterate through the chain?
 
     pInfo->isHost       = AnyDSL_TRUE;
@@ -125,16 +125,16 @@ AnyDSLResult CpuDevice::get_info(AnyDSLDeviceInfo* pInfo)
 
 AnyDSLResult CpuDevice::get_features(AnyDSLDeviceFeatures* pFeatures)
 {
-    ANYDSL_CHECK_RET_PTR(pFeatures);
-    ANYDSL_CHECK_RET_TYPE(pFeatures, AnyDSL_STRUCTURE_TYPE_DEVICE_FEATURES);
+    CHECK_RET_PTR(pFeatures);
+    CHECK_RET_TYPE(pFeatures, AnyDSL_STRUCTURE_TYPE_DEVICE_FEATURES);
 
     return AnyDSL_SUCCESS;
 }
 
 AnyDSLResult CpuDevice::set_options(AnyDSLDeviceOptions* pOptions)
 {
-    ANYDSL_CHECK_RET_PTR(pOptions);
-    ANYDSL_CHECK_RET_TYPE(pOptions, AnyDSL_STRUCTURE_TYPE_DEVICE_OPTIONS);
+    CHECK_RET_PTR(pOptions);
+    CHECK_RET_TYPE(pOptions, AnyDSL_STRUCTURE_TYPE_DEVICE_OPTIONS);
 
     return AnyDSL_SUCCESS;
 }
@@ -149,7 +149,7 @@ std::tuple<AnyDSLResult, Buffer*> CpuDevice::create_buffer(const AnyDSLCreateBuf
     CpuBuffer* buffer = new CpuBuffer(this);
 
     if (buffer == nullptr)
-        return { AnyDSL_OUT_OF_HOST_MEMORY, nullptr };
+        return { HANDLE_ERROR(AnyDSL_OUT_OF_HOST_MEMORY), nullptr };
 
     AnyDSLResult res = buffer->create(pInfo);
     return { res, buffer };
@@ -160,7 +160,7 @@ std::tuple<AnyDSLResult, Event*> CpuDevice::create_event(const AnyDSLCreateEvent
     CpuEvent* event = new CpuEvent(this);
 
     if (event == nullptr)
-        return { AnyDSL_OUT_OF_HOST_MEMORY, nullptr };
+        return { HANDLE_ERROR(AnyDSL_OUT_OF_HOST_MEMORY), nullptr };
 
     AnyDSLResult res = event->create(pInfo);
     return { res, event };
@@ -169,13 +169,13 @@ std::tuple<AnyDSLResult, Event*> CpuDevice::create_event(const AnyDSLCreateEvent
 std::tuple<AnyDSLResult, void*> CpuDevice::allocate_memory(size_t size)
 {
     void* ptr = Runtime::instance().aligned_malloc(size, 32);
-    return { ptr != nullptr ? AnyDSL_SUCCESS : AnyDSL_OUT_OF_HOST_MEMORY, ptr };
+    return { ptr != nullptr ? AnyDSL_SUCCESS : HANDLE_ERROR(AnyDSL_OUT_OF_HOST_MEMORY), ptr };
 }
 
 AnyDSLResult CpuDevice::release_memory(void* ptr)
 {
     if (ptr == nullptr)
-        return AnyDSL_INVALID_POINTER;
+        return HANDLE_ERROR(AnyDSL_INVALID_POINTER);
 
     Runtime::instance().aligned_free(ptr);
 
@@ -184,9 +184,9 @@ AnyDSLResult CpuDevice::release_memory(void* ptr)
 
 AnyDSLResult CpuDevice::launch_kernel(const AnyDSLLaunchKernelInfo* pInfo)
 {
-    ANYDSL_CHECK_RET_PTR(pInfo);
-    ANYDSL_CHECK_RET_TYPE(pInfo, AnyDSL_STRUCTURE_TYPE_DEVICE_LAUNCH_KERNEL_INFO);
+    CHECK_RET_PTR(pInfo);
+    CHECK_RET_TYPE(pInfo, AnyDSL_STRUCTURE_TYPE_DEVICE_LAUNCH_KERNEL_INFO);
 
-    return AnyDSL_NOT_SUPPORTED;
+    return HANDLE_ERROR(AnyDSL_NOT_SUPPORTED);
 }
 } // namespace AnyDSLInternal

@@ -30,7 +30,6 @@ ANYDSL_MAKE_HANDLE(AnyDSLLogReportCallback);
 #undef ANYDSL_MAKE_HANDLE
 
 #define AnyDSL_NULL_HANDLE (0)
-#define AnyDSL_HOST ((AnyDSLDevice)(0))
 
 #define AnyDSL_FALSE (0)
 #define AnyDSL_TRUE (1)

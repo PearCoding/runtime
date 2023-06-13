@@ -16,7 +16,7 @@ AnyDSLResult CpuPlatform::init()
 std::tuple<AnyDSLResult, Device*> CpuPlatform::get_device(const AnyDSLGetDeviceRequest* pRequest)
 {
     if (pRequest == nullptr || pRequest->sType != AnyDSL_STRUCTURE_TYPE_GET_DEVICE_REQUEST)
-        return { AnyDSL_INVALID_VALUE, nullptr };
+        return { HANDLE_ERROR(AnyDSL_INVALID_VALUE), nullptr };
 
     return { AnyDSL_SUCCESS, &mHost };
 }

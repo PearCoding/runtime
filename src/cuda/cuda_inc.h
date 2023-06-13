@@ -4,6 +4,7 @@
 #include "anydsl_runtime_internal_config.h"
 
 #include "log.h"
+#include "utils.h"
 
 #include <string>
 
@@ -23,10 +24,10 @@ namespace AnyDSLInternal {
 
 #define CHECK_NVVM_RET(err, name)                                \
     if (auto res = CHECK_NVVM(err, name); res != AnyDSL_SUCCESS) \
-    return res
+    return HANDLE_ERROR(res)
 #define CHECK_CUDA_RET(err, name)                                \
     if (auto res = CHECK_CUDA(err, name); res != AnyDSL_SUCCESS) \
-    return res
+    return HANDLE_ERROR(res)
 
 inline AnyDSLResult check_cuda_errors(CUresult err, const char* name, const char* file, const int line)
 {

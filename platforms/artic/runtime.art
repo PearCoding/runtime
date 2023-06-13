@@ -32,22 +32,35 @@
 #[import(cc = "C", name = "anydsl_std_copy_buffer_to_host")]   fn anydsl_copy_buffer_to_host(_ptr: &mut [i8], _bufferSrc: u64, _offsetSrc: i64, _size: i64) -> ();
 
 struct Buffer {
+    data : &mut [i8],
     size : i64,
     id   : u64
 }
 
-fn @alloc(device: u64, size: i64) = Buffer {
-    id   = anydsl_create_buffer(device, size, 0x0),
-    size = size
-};
-fn @alloc_host(device: u64, size: i64) = Buffer {
-    id   = anydsl_create_buffer(device, size, 0x1),
-    size = size,
-};
-fn @alloc_unified(device: u64, size: i64) = Buffer {
-    id   = anydsl_create_buffer(device, size, 0x2),
-    size = size,
-};
+fn @alloc(device: u64, size: i64) -> Buffer {
+    let id = anydsl_create_buffer(device, size, 0x0);
+    Buffer{
+        data = anydsl_get_device_ptr(id) as &mut [i8],
+        size = size,
+        id = id
+    }
+}
+fn @alloc_host(device: u64, size: i64) -> Buffer {
+    let id = anydsl_create_buffer(device, size, 0x1);
+    Buffer{
+        data = anydsl_get_device_ptr(id) as &mut [i8],
+        size = size,
+        id = id
+    }
+}
+fn @alloc_unified(device: u64, size: i64) -> Buffer {
+    let id = anydsl_create_buffer(device, size, 0x2);
+    Buffer{
+        data = anydsl_get_device_ptr(id) as &mut [i8],
+        size = size,
+        id = id
+    }
+}
 
 fn @release(buf: Buffer) = anydsl_destroy_buffer(buf.id);
 

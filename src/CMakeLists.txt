@@ -42,6 +42,8 @@ add_library(runtime ${AnyDSL_runtime_BUILD} ${SRC})
 target_include_directories(runtime
     PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
     PRIVATE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/src>)
+target_compile_definitions(runtime
+    PRIVATE $<$<CONFIG:Debug>:AnyDSL_RUNTIME_DEBUG>)
 
 if(MSVC)
     target_compile_options(runtime PRIVATE "/experimental:external" "/external:anglebrackets" "/external:W0")

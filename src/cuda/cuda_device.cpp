@@ -43,8 +43,8 @@ AnyDSLResult CudaDevice::init()
 
 AnyDSLResult CudaDevice::get_handle(AnyDSLDeviceHandleInfo* pInfo)
 {
-    ANYDSL_CHECK_RET_PTR(pInfo);
-    ANYDSL_CHECK_RET_TYPE(pInfo, AnyDSL_STRUCTURE_TYPE_DEVICE_HANDLE_INFO);
+    CHECK_RET_PTR(pInfo);
+    CHECK_RET_TYPE(pInfo, AnyDSL_STRUCTURE_TYPE_DEVICE_HANDLE_INFO);
 
     pInfo->pHandle = (void*)((uintptr_t)mContext);
 
@@ -53,8 +53,8 @@ AnyDSLResult CudaDevice::get_handle(AnyDSLDeviceHandleInfo* pInfo)
 
 AnyDSLResult CudaDevice::get_info(AnyDSLDeviceInfo* pInfo)
 {
-    ANYDSL_CHECK_RET_PTR(pInfo);
-    ANYDSL_CHECK_RET_TYPE(pInfo, AnyDSL_STRUCTURE_TYPE_DEVICE_INFO);
+    CHECK_RET_PTR(pInfo);
+    CHECK_RET_TYPE(pInfo, AnyDSL_STRUCTURE_TYPE_DEVICE_INFO);
     // TODO: Iterate through the chain?
 
     size_t bytes = 0;
@@ -73,8 +73,8 @@ AnyDSLResult CudaDevice::get_info(AnyDSLDeviceInfo* pInfo)
 
 AnyDSLResult CudaDevice::get_features(AnyDSLDeviceFeatures* pFeatures)
 {
-    ANYDSL_CHECK_RET_PTR(pFeatures);
-    ANYDSL_CHECK_RET_TYPE(pFeatures, AnyDSL_STRUCTURE_TYPE_DEVICE_FEATURES);
+    CHECK_RET_PTR(pFeatures);
+    CHECK_RET_TYPE(pFeatures, AnyDSL_STRUCTURE_TYPE_DEVICE_FEATURES);
 
     // Nothing to fill here
 
@@ -137,8 +137,8 @@ AnyDSLResult CudaDevice::get_features(AnyDSLDeviceFeatures* pFeatures)
 
 AnyDSLResult CudaDevice::set_options(AnyDSLDeviceOptions* pOptions)
 {
-    ANYDSL_CHECK_RET_PTR(pOptions);
-    ANYDSL_CHECK_RET_TYPE(pOptions, AnyDSL_STRUCTURE_TYPE_DEVICE_OPTIONS);
+    CHECK_RET_PTR(pOptions);
+    CHECK_RET_TYPE(pOptions, AnyDSL_STRUCTURE_TYPE_DEVICE_OPTIONS);
 
     // Nothing to get here
 
@@ -169,7 +169,7 @@ std::tuple<AnyDSLResult, Buffer*> CudaDevice::create_buffer(const AnyDSLCreateBu
     CudaBuffer* buffer = new CudaBuffer(this);
 
     if (buffer == nullptr)
-        return { AnyDSL_OUT_OF_HOST_MEMORY, nullptr };
+        return { HANDLE_ERROR(AnyDSL_OUT_OF_HOST_MEMORY), nullptr };
 
     AnyDSLResult res = buffer->create(pInfo);
     return { res, buffer };
@@ -180,7 +180,7 @@ std::tuple<AnyDSLResult, Event*> CudaDevice::create_event(const AnyDSLCreateEven
     CudaEvent* event = new CudaEvent(this);
 
     if (event == nullptr)
-        return { AnyDSL_OUT_OF_HOST_MEMORY, nullptr };
+        return { HANDLE_ERROR(AnyDSL_OUT_OF_HOST_MEMORY), nullptr };
 
     AnyDSLResult res = event->create(pInfo);
     return { res, event };
@@ -208,8 +208,8 @@ AnyDSLResult CudaDevice::release_memory(void* ptr)
 AnyDSLResult CudaDevice::launch_kernel(const AnyDSLLaunchKernelInfo* pInfo)
 {
     // TODO: Add option to gather information about the functions (like reg size etc)
-    ANYDSL_CHECK_RET_PTR(pInfo);
-    ANYDSL_CHECK_RET_TYPE(pInfo, AnyDSL_STRUCTURE_TYPE_DEVICE_LAUNCH_KERNEL_INFO);
+    CHECK_RET_PTR(pInfo);
+    CHECK_RET_TYPE(pInfo, AnyDSL_STRUCTURE_TYPE_DEVICE_LAUNCH_KERNEL_INFO);
 
     CudaContextGuard ctx(this);
 

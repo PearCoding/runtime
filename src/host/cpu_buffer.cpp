@@ -1,6 +1,7 @@
 #include "cpu_buffer.h"
 #include "device.h"
 #include "runtime.h"
+#include "utils.h"
 
 #include <algorithm>
 #include <cstring>
@@ -21,7 +22,7 @@ AnyDSLResult CpuBuffer::create(const AnyDSLCreateBufferInfo* pInfo)
     }
 
     if (mMem == nullptr)
-        return AnyDSL_OUT_OF_HOST_MEMORY;
+        return HANDLE_ERROR(AnyDSL_OUT_OF_HOST_MEMORY);
 
     return AnyDSL_SUCCESS;
 }
@@ -44,7 +45,7 @@ AnyDSLResult CpuBuffer::get_pointer(AnyDSLGetBufferPointerInfo* pInfo)
 
 AnyDSLResult CpuBuffer::copy_to(Buffer* dst, uint32_t count, const AnyDSLBufferCopy* pRegions)
 {
-    if (dst->device() == device() || dst->device() == (Device*)AnyDSL_HOST || dst->device()->isHost()) {
+    if (dst->device() == device() || dst->device()->isHost()) {
         // Only host
         for (uint32_t i = 0; i < count; ++i) {
             void* src_mem = mMem + pRegions[i].offsetSrc;
@@ -52,7 +53,7 @@ AnyDSLResult CpuBuffer::copy_to(Buffer* dst, uint32_t count, const AnyDSLBufferC
             std::memcpy(dst_mem, src_mem, pRegions[i].size);
         }
     } else {
-        return AnyDSL_NOT_SUPPORTED;
+        return HANDLE_ERROR(AnyDSL_NOT_SUPPORTED);
     }
 
     return AnyDSL_SUCCESS;

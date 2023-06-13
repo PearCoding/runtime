@@ -205,30 +205,30 @@ static inline size_t unwrapModule(AnyDSLJITModule module) { return (size_t)(uint
 AnyDSLResult JIT::compile(const char* program, size_t size, AnyDSLJITModule* pModule, const AnyDSLJITCompileOptions* pOptions, AnyDSLJITCompileResult* pResult)
 {
     if (size == 0)
-        return AnyDSL_INVALID_VALUE;
-    ANYDSL_CHECK_RET_PTR(program);
-    ANYDSL_CHECK_RET_PTR(pModule);
+        return HANDLE_ERROR(AnyDSL_INVALID_VALUE);
+    CHECK_RET_PTR(program);
+    CHECK_RET_PTR(pModule);
 
-    ANYDSL_CHECK_RET_TYPE(pOptions, AnyDSL_STRUCTURE_TYPE_JIT_COMPILE_OPTIONS);
+    CHECK_RET_TYPE(pOptions, AnyDSL_STRUCTURE_TYPE_JIT_COMPILE_OPTIONS);
     if (pResult != nullptr)
-        ANYDSL_CHECK_RET_TYPE(pResult, AnyDSL_STRUCTURE_TYPE_JIT_COMPILE_RESULT);
+        CHECK_RET_TYPE(pResult, AnyDSL_STRUCTURE_TYPE_JIT_COMPILE_RESULT);
 
     if (pOptions->optLevel > 3) // Only allow proper defined levels
-        return AnyDSL_INVALID_VALUE;
+        return HANDLE_ERROR(AnyDSL_INVALID_VALUE);
     if (pOptions->logLevel > 4) // Only allow proper defined levels
-        return AnyDSL_INVALID_VALUE;
+        return HANDLE_ERROR(AnyDSL_INVALID_VALUE);
 
     size_t key = jit().compile(program, size, pOptions, pResult);
 
     *pModule = (AnyDSLJITModule)key;
 
-    return jit().check_key(key) ? AnyDSL_SUCCESS : AnyDSL_JIT_ERROR;
+    return jit().check_key(key) ? AnyDSL_SUCCESS : HANDLE_ERROR(AnyDSL_JIT_ERROR);
 }
 
 AnyDSLResult JIT::destroyModule(AnyDSLJITModule module)
 {
     if (!jit().check_key(unwrapModule(module)))
-        return AnyDSL_INVALID_HANDLE;
+        return HANDLE_ERROR(AnyDSL_INVALID_HANDLE);
 
     // TODO: Make use of it
     return AnyDSL_SUCCESS;
@@ -239,7 +239,7 @@ AnyDSLResult JIT::freeCompileResult(const AnyDSLJITCompileResult* pResult)
     if (pResult == nullptr)
         return AnyDSL_SUCCESS;
 
-    ANYDSL_CHECK_RET_TYPE(pResult, AnyDSL_STRUCTURE_TYPE_JIT_COMPILE_RESULT);
+    CHECK_RET_TYPE(pResult, AnyDSL_STRUCTURE_TYPE_JIT_COMPILE_RESULT);
 
     if (pResult->logOutput != nullptr)
         delete[] pResult->logOutput;
@@ -250,15 +250,15 @@ AnyDSLResult JIT::freeCompileResult(const AnyDSLJITCompileResult* pResult)
 AnyDSLResult JIT::lookup(AnyDSLJITModule module, const char* function, AnyDSLJITLookupInfo* pInfo)
 {
     if (!jit().check_key(unwrapModule(module)))
-        return AnyDSL_INVALID_HANDLE;
+        return (AnyDSL_INVALID_HANDLE);
 
-    ANYDSL_CHECK_RET_PTR(function);
-    ANYDSL_CHECK_RET_TYPE(pInfo, AnyDSL_STRUCTURE_TYPE_JIT_LOOKUP_INFO);
+    CHECK_RET_PTR(function);
+    CHECK_RET_TYPE(pInfo, AnyDSL_STRUCTURE_TYPE_JIT_LOOKUP_INFO);
 
     void* func = jit().lookup_function(unwrapModule(module), function);
 
     if (func == nullptr)
-        return AnyDSL_JIT_NO_FUNCTION;
+        return HANDLE_ERROR(AnyDSL_JIT_NO_FUNCTION);
 
     pInfo->pHandle = func;
 
@@ -267,14 +267,16 @@ AnyDSLResult JIT::lookup(AnyDSLJITModule module, const char* function, AnyDSLJIT
 
 AnyDSLResult JIT::link(AnyDSLJITModule module, size_t count, const AnyDSLJITLinkInfo* pLinkInfo)
 {
-    if (!jit().check_key(unwrapModule(module)))
-        return AnyDSL_INVALID_HANDLE;
+    // module == AnyDSL_NULL_HANDLE -> for all
+    unused(module);
+    // if (!jit().check_key(unwrapModule(module)))
+    //     return AnyDSL_INVALID_HANDLE;
 
     if (count == 0)
-        return AnyDSL_INVALID_VALUE;
+        return HANDLE_ERROR(AnyDSL_INVALID_VALUE);
 
     for (size_t i = 0; i < count; ++i) {
-        ANYDSL_CHECK_RET_TYPE(pLinkInfo, AnyDSL_STRUCTURE_TYPE_JIT_LINK_INFO);
+        CHECK_RET_TYPE(pLinkInfo, AnyDSL_STRUCTURE_TYPE_JIT_LINK_INFO);
 
         jit().link(pLinkInfo->libraryFilename);
 

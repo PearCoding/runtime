@@ -71,10 +71,20 @@ inline void debug(const char* fmt, Args... args)
 }
 
 template <typename... Args>
-inline void trace(const char* fmt, Args... args)
+inline void trace_call(const char* fmt, Args... args)
 {
-#ifdef AnyDSL_RUNTIME_ENABLE_TRACE_OUTPUT
+#ifdef AnyDSL_RUNTIME_ENABLE_TRACE_CALLS_OUTPUT
     print(AnyDSL_LOG_REPORT_LEVEL_TRACE_BIT, fmt, args...);
+#else
+    unused(fmt, args...);
+#endif
+}
+
+template <typename... Args>
+inline void trace_err(const char* fmt, Args... args)
+{
+#ifdef AnyDSL_RUNTIME_ENABLE_TRACE_ERRORS_OUTPUT
+    print(AnyDSL_LOG_REPORT_LEVEL_ERROR_BIT, fmt, args...);
 #else
     unused(fmt, args...);
 #endif

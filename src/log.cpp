@@ -16,7 +16,7 @@ Log::~Log()
 // TODO: Thread safe?
 AnyDSLResult Log::log(AnyDSLLogReportLevelFlags flags, const char* pMessage)
 {
-    ANYDSL_CHECK_RET_PTR(pMessage);
+    CHECK_RET_PTR(pMessage);
     if ((flags & AnyDSL_LOG_REPORT_LEVEL_MAX_ENUM) == 0)
         return AnyDSL_INVALID_VALUE;
 
@@ -52,8 +52,8 @@ AnyDSLResult Log::logf(AnyDSLLogReportLevelFlags flags, const char* pMessage, ..
 
 AnyDSLResult Log::registerHandler(const AnyDSLLogReportCallbackCreateInfo* pCreateInfo, AnyDSLLogReportCallback* pCallback)
 {
-    ANYDSL_CHECK_RET_PTR(pCallback);
-    ANYDSL_CHECK_RET_TYPE(pCreateInfo, AnyDSL_STRUCTURE_TYPE_LOG_REPORT_CALLBACK_CREATE_INFO);
+    CHECK_RET_PTR(pCallback);
+    CHECK_RET_TYPE(pCreateInfo, AnyDSL_STRUCTURE_TYPE_LOG_REPORT_CALLBACK_CREATE_INFO);
 
     if (pCreateInfo->pfnCallback == nullptr)
         return AnyDSL_INVALID_VALUE;
