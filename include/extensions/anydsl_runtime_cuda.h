@@ -13,6 +13,7 @@ typedef struct AnyDSLDeviceOptionsCuda {
     AnyDSLStructureType sType;
     const void* pNext;
 
+    AnyDSLBool useNVPTX;  // If true, use nvptx with LLVM instead of nvvm for kernel generation. Default is true
     AnyDSLBool dumpCubin; // If true, will dump cubin into the cache directory. Default is false
 } AnyDSLDeviceOptionsCuda;
 

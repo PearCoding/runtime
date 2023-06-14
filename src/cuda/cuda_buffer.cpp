@@ -73,7 +73,7 @@ AnyDSLResult CudaBuffer::copy_to(Buffer* dst, uint32_t count, const AnyDSLBuffer
         for (uint32_t i = 0; i < count; ++i) {
             CUdeviceptr src_mem = mMem + pRegions[i].offsetSrc;
             CUdeviceptr dst_mem = ((CudaBuffer*)dst)->mMem + pRegions[i].offsetDst;
-            CUresult err        = cuMemcpyDtoD(dst_mem, src_mem, pRegions[i].size);
+            CUresult err        = cuMemcpyDtoDAsync(dst_mem, src_mem, pRegions[i].size, nullptr);
             CHECK_CUDA_RET(err, "cuMemcpyDtoD()");
         }
     } else if (dst->device()->isHost()) {
@@ -82,7 +82,7 @@ AnyDSLResult CudaBuffer::copy_to(Buffer* dst, uint32_t count, const AnyDSLBuffer
         for (uint32_t i = 0; i < count; ++i) {
             CUdeviceptr src_mem = mMem + pRegions[i].offsetSrc;
             void* dst_mem       = ((CpuBuffer*)dst)->pointer() + pRegions[i].offsetDst;
-            CUresult err        = cuMemcpyDtoH(dst_mem, src_mem, pRegions[i].size);
+            CUresult err        = cuMemcpyDtoHAsync(dst_mem, src_mem, pRegions[i].size, nullptr);
             CHECK_CUDA_RET(err, "cuMemcpyDtoH()");
         }
     } else if (dst->device()->platform() == device()->platform()) {
@@ -90,7 +90,7 @@ AnyDSLResult CudaBuffer::copy_to(Buffer* dst, uint32_t count, const AnyDSLBuffer
         for (uint32_t i = 0; i < count; ++i) {
             CUdeviceptr src_mem = mMem + pRegions[i].offsetSrc;
             CUdeviceptr dst_mem = ((CudaBuffer*)dst)->mMem + pRegions[i].offsetDst;
-            CUresult err        = cuMemcpyPeer(dst_mem, ((CudaDevice*)dst->device())->context(), src_mem, ((CudaDevice*)mDevice)->context(), pRegions[i].size);
+            CUresult err        = cuMemcpyPeerAsync(dst_mem, ((CudaDevice*)dst->device())->context(), src_mem, ((CudaDevice*)mDevice)->context(), pRegions[i].size, nullptr);
             CHECK_CUDA_RET(err, "cuMemcpyPeer()");
         }
     } else {
@@ -104,7 +104,7 @@ AnyDSLResult CudaBuffer::fill(AnyDSLDeviceSize offset, AnyDSLDeviceSize count, u
 {
     CudaContextGuard ctx(mDevice);
 
-    CUresult err = cuMemsetD32(mMem + offset, data, count);
+    CUresult err = cuMemsetD32Async(mMem + offset, data, count, nullptr);
     CHECK_CUDA_RET(err, "cuMemsetD32()");
 
     return AnyDSL_SUCCESS;
@@ -115,7 +115,7 @@ AnyDSLResult CudaBuffer::copy_from_host(AnyDSLDeviceSize offset, AnyDSLDeviceSiz
     CudaContextGuard ctx(mDevice);
 
     CUdeviceptr mem = mMem + offset;
-    CUresult err    = cuMemcpyHtoD(mem, pData, size);
+    CUresult err    = cuMemcpyHtoDAsync(mem, pData, size, nullptr);
     CHECK_CUDA_RET(err, "cuMemcpyHtoD()");
 
     return AnyDSL_SUCCESS;
@@ -126,7 +126,7 @@ AnyDSLResult CudaBuffer::copy_to_host(AnyDSLDeviceSize offset, AnyDSLDeviceSize 
     CudaContextGuard ctx(mDevice);
 
     CUdeviceptr mem = mMem + offset;
-    CUresult err    = cuMemcpyDtoH(pData, mem, size);
+    CUresult err    = cuMemcpyDtoHAsync(pData, mem, size, nullptr);
     CHECK_CUDA_RET(err, "cuMemcpyDtoH()");
 
     return AnyDSL_SUCCESS;

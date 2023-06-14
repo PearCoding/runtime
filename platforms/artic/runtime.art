@@ -30,6 +30,7 @@
 #[import(cc = "C", name = "anydsl_std_fill_buffer")]    fn anydsl_fill_buffer(_value: u32, _bufferDst: u64, _offsetDst: i64, _size: i64) -> ();
 #[import(cc = "C", name = "anydsl_std_copy_buffer_from_host")] fn anydsl_copy_buffer_from_host(_ptr: &[i8], _bufferDst: u64, _offsetDst: i64, _size: i64) -> ();
 #[import(cc = "C", name = "anydsl_std_copy_buffer_to_host")]   fn anydsl_copy_buffer_to_host(_ptr: &mut [i8], _bufferSrc: u64, _offsetSrc: i64, _size: i64) -> ();
+#[import(cc = "C", name = "anydsl_std_synchronize_buffer")] fn anydsl_synchronize_buffer(_buffer: u64) -> ();
 
 struct Buffer {
     data : &mut [i8],

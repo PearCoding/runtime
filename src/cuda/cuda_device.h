@@ -13,6 +13,7 @@ public:
     CudaDevice(int devId, Platform* platform)
         : Device(platform)
         , mId(devId)
+        , mUseNVPTX(true)
         , mDumpCubin(false)
     {
     }
@@ -21,6 +22,8 @@ public:
     CudaDevice(CudaDevice&& device)
         : Device(device.mPlatform)
         , mId(device.mId)
+        , mUseNVPTX(true)
+        , mDumpCubin(false)
     {
     }
 
@@ -54,6 +57,7 @@ public:
 
 private:
     AnyDSLResult load_kernel(const std::string& filename, const std::string& kernelname, CUfunction* func);
+    AnyDSLResult compile_nvptx(const std::string& filename, const std::string& program_string, std::string* compiled) const;
     AnyDSLResult compile_nvvm(const std::string& filename, const std::string& program_string, std::string* compiled) const;
     AnyDSLResult create_module(const std::string& filename, const std::string& ptx_string, CUmodule* module) const;
 
@@ -65,6 +69,7 @@ private:
     int mMinorVersion;
     CUjit_target mComputeCapability;
 
+    bool mUseNVPTX;
     bool mDumpCubin;
 
     using FunctionMap = std::unordered_map<std::string, CUfunction>;

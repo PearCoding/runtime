@@ -21,7 +21,14 @@ enum class Platform : int32_t {
 
 class Device {
 public:
-    Device(Platform platform = Platform::Host, int32_t num = 0)
+    Device()
+        : mNum(-1)
+        , mHandle(AnyDSL_NULL_HANDLE)
+        , mIsHost(false)
+    {
+    }
+
+    Device(Platform platform, int32_t num = 0)
         : mNum(num)
         , mIsHost(platform == Platform::Host)
     {
@@ -33,6 +40,11 @@ public:
         };
 
         anydslGetDevice(&info, &mHandle);
+    }
+
+    inline bool sync()
+    {
+        return anydslSynchronizeDevice(mHandle) == AnyDSL_SUCCESS;
     }
 
     inline AnyDSLDevice handle() const { return mHandle; }

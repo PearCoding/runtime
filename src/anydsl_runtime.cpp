@@ -81,10 +81,9 @@ AnyDSLResult anydslEnumerateDevices(size_t* pCount, AnyDSLDeviceInfo* pInfo)
     TRACE();
     CHECK_RET_PTR(pCount);
 
-    *pCount = 0;
-
     if (pInfo == nullptr) {
         // Compute count
+        *pCount = 0;
         for (size_t i = 0; i < Runtime::instance().platforms().size(); ++i) {
             Platform* platform = Runtime::instance().platforms()[i].get();
             *pCount += (size_t)platform->dev_count();
@@ -264,6 +263,14 @@ AnyDSLResult anydslCopyBufferToHost(AnyDSLBuffer bufferSrc, AnyDSLDeviceSize off
         return HANDLE_ERROR(AnyDSL_INVALID_POINTER);
 
     return unwrapBufferHandle(bufferSrc)->copy_to_host(offset, size, pData);
+}
+
+AnyDSLResult anydslSynchronizeBuffer(AnyDSLBuffer buffer)
+{
+    TRACE();
+    CHECK_HANDLE_RET(buffer);
+
+    return unwrapBufferHandle(buffer)->device()->sync();
 }
 
 // ----------------------------------------- Raw pointers

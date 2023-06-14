@@ -309,7 +309,7 @@ AnyDSL_runtime_API AnyDSLResult anydslGetDeviceFeatures(AnyDSLDevice device, Any
 /// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslSetDeviceOptions(AnyDSLDevice device, AnyDSLDeviceOptions* pDeviceOptions);
 /// @brief Wait for all operations on a device to finish.
-/// @param device The device to wait for. A call with AnyDSL_HOST will be ignored.
+/// @param device The device to wait for.
 /// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslSynchronizeDevice(AnyDSLDevice device);
 
@@ -365,6 +365,11 @@ AnyDSL_runtime_API AnyDSLResult anydslCopyBufferFromHost(AnyDSLBuffer bufferDst,
 /// @param pData Pointer to a 4 byte aligned memory.
 /// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslCopyBufferToHost(AnyDSLBuffer bufferSrc, AnyDSLDeviceSize offset, AnyDSLDeviceSize size, void* pData);
+/// @brief Wait for all operations on the device assosciated with the buffer to finish.
+/// @param buffer The buffer whom device will be waited for.
+/// @return AnyDSL_SUCCESS if sucessful.
+/// @note This will wait for all operations on the device! Not only the pending buffer operations affecting the buffer.
+AnyDSL_runtime_API AnyDSLResult anydslSynchronizeBuffer(AnyDSLBuffer buffer);
 
 // -------------------------------------- Raw allocations
 /// @brief Allocates memory on the device. This is the same as anydslCreateBuffer (flags=0) but returning a raw pointer.

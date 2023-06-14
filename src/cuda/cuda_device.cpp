@@ -10,6 +10,23 @@
 #define LIBDEVICE_DIR AnyDSL_runtime_LIBDEVICE_DIR
 #endif
 
+#ifdef AnyDSL_runtime_HAS_LLVM_SUPPORT
+#include <llvm/Analysis/TargetTransformInfo.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/LegacyPassManager.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IRReader/IRReader.h>
+#include <llvm/Linker/Linker.h>
+#include <llvm/MC/TargetRegistry.h>
+#include <llvm/Support/CommandLine.h>
+#include <llvm/Support/SourceMgr.h>
+#include <llvm/Support/TargetSelect.h>
+#include <llvm/Target/TargetMachine.h>
+#include <llvm/Target/TargetOptions.h>
+#include <llvm/Transforms/IPO.h>
+#include <llvm/Transforms/IPO/PassManagerBuilder.h>
+#endif
+
 namespace AnyDSLInternal {
 
 AnyDSLResult CudaDevice::init()
@@ -148,6 +165,7 @@ AnyDSLResult CudaDevice::set_options(AnyDSLDeviceOptions* pOptions)
             AnyDSLDeviceOptionsCuda* pCudaOptions = (AnyDSLDeviceOptionsCuda*)ptr;
 
             std::lock_guard _guard(mLock);
+            mUseNVPTX  = pCudaOptions->useNVPTX == AnyDSL_TRUE;
             mDumpCubin = pCudaOptions->dumpCubin == AnyDSL_TRUE;
         }
     }
@@ -290,9 +308,19 @@ AnyDSLResult CudaDevice::load_kernel(const std::string& filename, const std::str
         std::string compute_capability_str = std::to_string(mComputeCapability);
         std::string ptx                    = Cache::instance().load_from_cache(compute_capability_str + src_code);
         if (ptx.empty()) {
-            const AnyDSLResult compileRes = compile_nvvm(src_path.string(), src_code, &ptx);
-            if (compileRes != AnyDSL_SUCCESS)
-                return compileRes;
+#ifdef AnyDSL_runtime_HAS_LLVM_SUPPORT
+            if (mUseNVPTX) {
+#else
+            if (false) {
+#endif
+                const AnyDSLResult compileRes = compile_nvptx(src_path.string(), src_code, &ptx);
+                if (compileRes != AnyDSL_SUCCESS)
+                    return compileRes;
+            } else {
+                const AnyDSLResult compileRes = compile_nvvm(src_path.string(), src_code, &ptx);
+                if (compileRes != AnyDSL_SUCCESS)
+                    return compileRes;
+            }
 
             Cache::instance().store_to_cache(compute_capability_str + src_code, ptx);
         }
@@ -337,6 +365,120 @@ AnyDSLResult CudaDevice::load_kernel(const std::string& filename, const std::str
     return AnyDSL_SUCCESS;
 }
 
+#ifdef AnyDSL_runtime_HAS_LLVM_SUPPORT
+AnyDSLResult CudaDevice::compile_nvptx(const std::string& filename, const std::string& program_string, std::string* compiled) const
+{
+    static bool llvm_nvptx_initialized = false;
+    if (!llvm_nvptx_initialized) {
+        // TODO: Make this an option
+        // ANYDSL_LLVM_ARGS="--nvptx-sched4reg --nvptx-fma-level=2 --nvptx-prec-divf32=0 --nvptx-prec-sqrtf32=0 --nvptx-f32ftz=1"
+        const char* env_var = std::getenv("ANYDSL_LLVM_ARGS");
+
+        std::vector<std::string> llvm_args = { "nvptx" };
+        if (env_var) {
+            std::istringstream stream(env_var);
+            std::string tmp;
+            while (stream >> tmp)
+                llvm_args.push_back(tmp);
+        } else {
+            llvm_args.emplace_back("--nvptx-sched4reg");
+            llvm_args.emplace_back("--nvptx-fma-level=2");
+            llvm_args.emplace_back("--nvptx-prec-divf32=0");
+            llvm_args.emplace_back("--nvptx-prec-sqrtf32=0");
+            // llvm_args.emplace_back("--nvptx-f32ftz=1");
+        }
+
+        if (llvm_args.size() > 1) {
+            std::vector<const char*> c_llvm_args;
+            for (auto& str : llvm_args)
+                c_llvm_args.push_back(str.c_str());
+            llvm::cl::ParseCommandLineOptions(c_llvm_args.size(), c_llvm_args.data(), "AnyDSL nvptx JIT compiler\n");
+        }
+
+        LLVMInitializeNVPTXTarget();
+        LLVMInitializeNVPTXTargetInfo();
+        LLVMInitializeNVPTXTargetMC();
+        LLVMInitializeNVPTXAsmPrinter();
+        llvm_nvptx_initialized = true;
+    }
+
+    const std::string cpu = "sm_" + std::to_string(mComputeCapability);
+
+    llvm::LLVMContext llvm_context;
+    llvm::SMDiagnostic diagnostic_err;
+    std::unique_ptr<llvm::Module> llvm_module = llvm::parseIR(llvm::MemoryBuffer::getMemBuffer(program_string)->getMemBufferRef(), diagnostic_err, llvm_context);
+
+    if (!llvm_module) {
+        std::string stream;
+        llvm::raw_string_ostream llvm_stream(stream);
+        diagnostic_err.print("", llvm_stream);
+        error("Parsing IR file %s: %s", filename, llvm_stream.str());
+
+        return HANDLE_ERROR(AnyDSL_PLATFORM_ERROR);
+    }
+
+    auto triple_str = llvm_module->getTargetTriple();
+    std::string error_str;
+    auto target = llvm::TargetRegistry::lookupTarget(triple_str, error_str);
+    llvm::TargetOptions options;
+    options.AllowFPOpFusion = llvm::FPOpFusion::Fast;
+    std::unique_ptr<llvm::TargetMachine> machine(target->createTargetMachine(triple_str, cpu, "" /* attrs */, options, llvm::Reloc::PIC_, llvm::CodeModel::Small, llvm::CodeGenOpt::Aggressive));
+
+    // link libdevice
+    std::string libdevice_filename = get_libdevice_path(mComputeCapability);
+    std::unique_ptr<llvm::Module> libdevice_module(llvm::parseIRFile(libdevice_filename, diagnostic_err, llvm_context));
+    if (libdevice_module == nullptr) {
+        error("Can't create libdevice module for '%s'", libdevice_filename);
+        return HANDLE_ERROR(AnyDSL_PLATFORM_ERROR);
+    }
+
+    // override data layout with the one coming from the target machine
+    llvm_module->setDataLayout(machine->createDataLayout());
+    libdevice_module->setDataLayout(machine->createDataLayout());
+    libdevice_module->setTargetTriple(triple_str);
+
+    llvm::Linker linker(*llvm_module.get());
+    if (linker.linkInModule(std::move(libdevice_module), llvm::Linker::Flags::LinkOnlyNeeded)) {
+        error("Can't link libdevice into module");
+        return HANDLE_ERROR(AnyDSL_PLATFORM_ERROR);
+    }
+
+    llvm::legacy::FunctionPassManager function_pass_manager(llvm_module.get());
+    llvm::legacy::PassManager module_pass_manager;
+
+    module_pass_manager.add(llvm::createTargetTransformInfoWrapperPass(machine->getTargetIRAnalysis()));
+    function_pass_manager.add(llvm::createTargetTransformInfoWrapperPass(machine->getTargetIRAnalysis()));
+
+    llvm::PassManagerBuilder builder;
+    builder.OptLevel = 3; // Full opt
+    builder.Inliner  = llvm::createFunctionInliningPass(builder.OptLevel, 0, false);
+    machine->adjustPassManager(builder);
+    builder.populateFunctionPassManager(function_pass_manager);
+    builder.populateModulePassManager(module_pass_manager);
+
+    machine->Options.MCOptions.AsmVerbose = true;
+
+    llvm::SmallString<0> outstr;
+    llvm::raw_svector_ostream llvm_stream(outstr);
+
+    machine->addPassesToEmitFile(module_pass_manager, llvm_stream, nullptr, llvm::CodeGenFileType::CGFT_AssemblyFile, true);
+
+    function_pass_manager.doInitialization();
+    for (auto func = llvm_module->begin(); func != llvm_module->end(); ++func)
+        function_pass_manager.run(*func);
+    function_pass_manager.doFinalization();
+    module_pass_manager.run(*llvm_module);
+
+    *compiled = outstr.str().str();
+    return AnyDSL_SUCCESS;
+}
+#else
+AnyDSLResult CudaDevice::compile_nvptx(const std::string&, const std::string&, std::string*) const
+{
+    return HANDLE_ERROR(AnyDSL_NOT_SUPPORTED);
+}
+#endif
+
 #if CUDA_VERSION < 10000
 #define nvvmLazyAddModuleToProgram(prog, buffer, size, name) nvvmAddModuleToProgram(prog, buffer, size, name)
 #endif
@@ -355,16 +497,17 @@ AnyDSLResult CudaDevice::compile_nvvm(const std::string& filename, const std::st
     CHECK_NVVM_RET(err, "nvvmAddModuleToProgram()");
 
     std::string compute_arch("-arch=compute_" + std::to_string(mComputeCapability));
-    int num_options       = 3;
-    const char* options[] = { // TODO: Convert these options
-                              compute_arch.c_str(),
-                              "-opt=3",
-                              "-generate-line-info",
-                              "-ftz=1",
-                              "-prec-div=0",
-                              "-prec-sqrt=0",
-                              "-fma=1",
-                              "-g"
+    int num_options       = 7;
+    const char* options[] = {
+        // TODO: Convert these options
+        compute_arch.c_str(),
+        "-opt=3",
+        "-generate-line-info",
+        "-ftz=1",
+        "-prec-div=0",
+        "-prec-sqrt=0",
+        "-fma=1",
+        //   "-g"
     };
 
     err = nvvmVerifyProgram(program, num_options, options);
@@ -373,7 +516,11 @@ AnyDSLResult CudaDevice::compile_nvvm(const std::string& filename, const std::st
         nvvmGetProgramLogSize(program, &log_size);
         std::string error_log(log_size, '\0');
         nvvmGetProgramLog(program, &error_log[0]);
-        info("Verify program error: %s", error_log.c_str());
+        error("Verify program error: %s", error_log.c_str());
+
+        Cache::instance().store_file(filename + ".sm_" + std::to_string(mComputeCapability) + ".err.nvvm", program_string);
+
+        CHECK_NVVM_RET(err, "nvvmVerifyProgram");
     }
 
     debug("Compiling NVVM to PTX using libNVVM for '%s' on CUDA device %i", filename.c_str(), mId);
@@ -383,7 +530,11 @@ AnyDSLResult CudaDevice::compile_nvvm(const std::string& filename, const std::st
         nvvmGetProgramLogSize(program, &log_size);
         std::string error_log(log_size, '\0');
         nvvmGetProgramLog(program, &error_log[0]);
-        info("Compilation error: %s", error_log.c_str());
+        error("Compilation error: %s", error_log.c_str());
+
+        Cache::instance().store_file(filename + ".sm_" + std::to_string(mComputeCapability) + ".err.nvvm", program_string);
+
+        CHECK_NVVM_RET(err, "nvvmCompileProgram");
     }
     CHECK_NVVM_RET(err, "nvvmCompileProgram()");
 
@@ -438,7 +589,7 @@ AnyDSLResult CudaDevice::create_module(const std::string& filename, const std::s
     size_t binary_size;
     CUresult err = cuLinkComplete(linker, &binary, &binary_size);
     if (err != CUDA_SUCCESS)
-        info("Compilation error: %s", error_log);
+        error("Compilation error: %s", error_log);
     if (*info_log)
         info("Compilation info: %s", info_log);
     CHECK_CUDA_RET(err, "cuLinkComplete()");

@@ -293,6 +293,12 @@ AnyDSL_runtime_std_API void anydsl_std_copy_buffer_to_host(void* ptr,
     anydslCopyBufferToHost(bufferSrc, (AnyDSLDeviceSize)offsetSrc, (AnyDSLDeviceSize)size, ptr);
 }
 
+AnyDSL_runtime_std_API void anydsl_std_synchronize_buffer(uint64_t bufferHandle)
+{
+    AnyDSLBuffer buffer = unwrapBuffer(bufferHandle);
+    anydslSynchronizeBuffer(buffer);
+}
+
 AnyDSL_runtime_std_API uint64_t anydsl_std_create_event(uint64_t deviceHandle)
 {
     AnyDSLDevice device = unwrapDevice(deviceHandle);
