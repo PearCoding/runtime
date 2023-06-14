@@ -53,7 +53,10 @@ AnyDSLResult CpuBuffer::copy_to(Buffer* dst, uint32_t count, const AnyDSLBufferC
             std::memcpy(dst_mem, src_mem, pRegions[i].size);
         }
     } else {
-        return HANDLE_ERROR(AnyDSL_NOT_SUPPORTED);
+        for (uint32_t i = 0; i < count; ++i) {
+            void* src_mem = mMem + pRegions[i].offsetSrc;
+            dst->copy_from_host(pRegions[i].offsetDst, pRegions[i].size, src_mem);
+        }
     }
 
     return AnyDSL_SUCCESS;
