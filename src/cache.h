@@ -24,6 +24,7 @@ private:
 public:
     inline void set_directory(const std::filesystem::path& dir) { mCacheDir = dir; }
     std::filesystem::path get_directory() const;
+    std::filesystem::path get_user_directory() const;
 
     std::filesystem::path get_filename(const std::string& str, const std::string& ext) const;
     std::string load_file(const std::filesystem::path& filename) const;

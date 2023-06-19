@@ -37,6 +37,22 @@ static const char runtime_srcs[] = {
     0
 };
 
+struct CacheDirPushup {
+    std::filesystem::path original;
+
+    inline CacheDirPushup(const char* cacheDir)
+    {
+        original = Cache::instance().get_user_directory();
+        if (cacheDir != nullptr)
+            Cache::instance().set_directory(cacheDir);
+    }
+
+    inline ~CacheDirPushup()
+    {
+        Cache::instance().set_directory(original);
+    }
+};
+
 struct JITSingleton {
     struct Program {
         Program(llvm::ExecutionEngine* engine)
@@ -58,6 +74,9 @@ struct JITSingleton {
     {
         uint32_t opt               = pOptions->optLevel;
         thorin::LogLevel log_level = pOptions->logLevel <= 4 ? static_cast<thorin::LogLevel>(pOptions->logLevel) : thorin::LogLevel::Warn;
+
+        // TODO: bUseCache
+        CacheDirPushup cacheSet(pOptions->cacheDir);
 
         // The LLVM context and module have to be alive for the duration of this function
         std::unique_ptr<llvm::LLVMContext> llvm_context;

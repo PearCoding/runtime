@@ -72,6 +72,11 @@ std::filesystem::path Cache::get_directory() const
     }
 }
 
+std::filesystem::path Cache::get_user_directory() const
+{
+    return mCacheDir;
+}
+
 std::filesystem::path Cache::get_filename(const std::string& str, const std::string& ext) const
 {
     size_t key = std::hash<std::string>{}(str);
