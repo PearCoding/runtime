@@ -119,9 +119,6 @@ hsa_status_t HSAPlatform::iterate_agents_callback(hsa_agent_t agent, void* data)
     char isa_name[64] = { 0 };
     status = hsa_isa_get_info_alt(isa, HSA_ISA_INFO_NAME, isa_name);
     debug("      Device ISA: %", isa_name);
-    std::string isa_name_str = isa_name;
-    auto dash_pos = isa_name_str.rfind('-');
-    isa_name_str = dash_pos != std::string::npos ? isa_name_str.substr(dash_pos + 1) : "";
 
     hsa_device_type_t device_type;
     status = hsa_agent_get_info(agent, HSA_AGENT_INFO_DEVICE, &device_type);
@@ -155,7 +152,7 @@ hsa_status_t HSAPlatform::iterate_agents_callback(hsa_agent_t agent, void* data)
     device->agent = agent;
     device->profile = profile;
     device->float_mode = float_mode;
-    device->isa = isa_name_str;
+    device->isa = agent_name;
     device->queue = queue;
     device->kernarg_region.handle = { 0 };
     device->finegrained_region.handle = { 0 };
@@ -596,12 +593,16 @@ std::string HSAPlatform::emit_gcn(const std::string& program, const std::string&
     llvm::SMDiagnostic diagnostic_err;
     std::unique_ptr<llvm::Module> llvm_module = llvm::parseIR(llvm::MemoryBuffer::getMemBuffer(program)->getMemBufferRef(), diagnostic_err, llvm_context);
 
-    if (!llvm_module) {
+    auto get_diag_msg = [&] () -> std::string {
         std::string stream;
         llvm::raw_string_ostream llvm_stream(stream);
         diagnostic_err.print("", llvm_stream);
-        error("Parsing IR file %: %", filename, llvm_stream.str());
-    }
+        llvm_stream.flush();
+        return stream;
+    };
+
+    if (!llvm_module)
+        error("Parsing IR file %:\n%", filename, get_diag_msg());
 
     auto triple_str = llvm_module->getTargetTriple();
     std::string error_str;
@@ -629,17 +630,17 @@ std::string HSAPlatform::emit_gcn(const std::string& program, const std::string&
                                 @__oclc_correctly_rounded_sqrt32 = addrspace(4) constant i8 0
                                 @__oclc_wavefrontsize64 = addrspace(4) constant i8 )" + wavefrontsize64;
     std::unique_ptr<llvm::Module> isa_module(llvm::parseIRFile(isa_file, diagnostic_err, llvm_context));
-    if (isa_module == nullptr)
-        error("Can't create isa module for '%'", isa_file);
+    if (!isa_module)
+        error("Can't create isa module for '%':\n%", isa_file, get_diag_msg());
     std::unique_ptr<llvm::Module> config_module = llvm::parseIR(llvm::MemoryBuffer::getMemBuffer(ocml_config)->getMemBufferRef(), diagnostic_err, llvm_context);
-    if (config_module == nullptr)
-        error("Can't create ocml config module");
+    if (!config_module)
+        error("Can't create ocml config module:\n%", get_diag_msg());
     std::unique_ptr<llvm::Module> ocml_module(llvm::parseIRFile(ocml_file, diagnostic_err, llvm_context));
-    if (ocml_module == nullptr)
-        error("Can't create ocml module for '%'", ocml_file);
+    if (!ocml_module)
+        error("Can't create ocml module for '%':\n%", ocml_file, get_diag_msg());
     std::unique_ptr<llvm::Module> ockl_module(llvm::parseIRFile(ockl_file, diagnostic_err, llvm_context));
-    if (ockl_module == nullptr)
-        error("Can't create ockl module for '%'", ockl_file);
+    if (!ockl_module)
+        error("Can't create ockl module for '%':\n%", ockl_file, get_diag_msg());
 
     // override data layout with the one coming from the target machine
     llvm_module->setDataLayout(machine->createDataLayout());
