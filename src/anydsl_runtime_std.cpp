@@ -207,11 +207,12 @@ AnyDSL_runtime_std_API const char* anydsl_std_get_device_ptr(uint64_t bufferHand
     AnyDSLGetBufferPointerInfo info = {
         AnyDSL_STRUCTURE_TYPE_GET_BUFFER_POINTER_INFO,
         nullptr,
+        (AnyDSLDevicePointer)0, // Will be set by the function
         (AnyDSLDevicePointer)0 // Will be set by the function
     };
     anydslGetBufferPointer(buffer, &info);
 
-    return reinterpret_cast<const char*>(info.pointer);
+    return reinterpret_cast<const char*>(info.devicePointer);
 }
 
 AnyDSL_runtime_std_API void anydsl_std_copy_buffer(uint64_t bufferSrcHandle, int64_t offsetSrc,

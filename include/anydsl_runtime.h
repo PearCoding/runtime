@@ -207,7 +207,8 @@ typedef struct AnyDSLBufferCopy {
 typedef struct AnyDSLGetBufferPointerInfo {
     AnyDSLStructureType sType;
     const void* pNext;
-    AnyDSLDevicePointer pointer;
+    AnyDSLDevicePointer hostPointer;
+    AnyDSLDevicePointer devicePointer;
 } AnyDSLGetBufferPointerInfo;
 
 // -------------------------------------- Structures [Event]

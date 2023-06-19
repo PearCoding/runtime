@@ -39,7 +39,8 @@ AnyDSLResult CpuBuffer::destroy()
 
 AnyDSLResult CpuBuffer::get_pointer(AnyDSLGetBufferPointerInfo* pInfo)
 {
-    pInfo->pointer = (AnyDSLDevicePointer)mMem;
+    pInfo->devicePointer = (AnyDSLDevicePointer)mMem;
+    pInfo->hostPointer   = pInfo->devicePointer;
     return AnyDSL_SUCCESS;
 }
 

@@ -48,6 +48,8 @@ AnyDSLResult CudaBuffer::destroy()
 
 AnyDSLResult CudaBuffer::get_pointer(AnyDSLGetBufferPointerInfo* pInfo)
 {
+    pInfo->hostPointer = mMem;
+
     if (AnyDSL_CHECK_BIT(mFlags, AnyDSL_CREATE_BUFFER_HOST_BIT)) {
         CudaContextGuard ctx(mDevice);
 
@@ -55,9 +57,9 @@ AnyDSLResult CudaBuffer::get_pointer(AnyDSLGetBufferPointerInfo* pInfo)
         CUresult err = cuMemHostGetDevicePointer(&mem, (void*)mMem, 0);
         CHECK_CUDA_RET(err, "cuMemHostGetDevicePointer()");
 
-        pInfo->pointer = mem;
+        pInfo->devicePointer = mem;
     } else {
-        pInfo->pointer = mMem;
+        pInfo->devicePointer = mMem;
     }
 
     return AnyDSL_SUCCESS;

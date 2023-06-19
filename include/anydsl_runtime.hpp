@@ -153,11 +153,12 @@ protected:
         AnyDSLGetBufferPointerInfo ptrInfo = {
             AnyDSL_STRUCTURE_TYPE_GET_BUFFER_POINTER_INFO,
             nullptr,
-            0                                      // Will be set by the function
+            0, // Will be set by the function
+            0  // Will be set by the function
         };
         anydslGetBufferPointer(mBuffer, &ptrInfo); // TODO: Check return value
 
-        mData = reinterpret_cast<T*>(ptrInfo.pointer);
+        mData = reinterpret_cast<T*>(ptrInfo.devicePointer);
     }
 
     void deallocate()
