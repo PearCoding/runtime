@@ -92,7 +92,8 @@ std::optional<Platform*> Runtime::query_platform(AnyDSLDeviceType type)
 void* Runtime::aligned_malloc(size_t size, size_t alignment)
 {
     void* p = nullptr;
-    posix_memalign(&p, alignment, size);
+    if (posix_memalign(&p, alignment, size) != 0)
+        return nullptr;
     return p;
 }
 void Runtime::aligned_free(void* ptr)

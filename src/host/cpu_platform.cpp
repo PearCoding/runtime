@@ -10,7 +10,7 @@ CpuPlatform::CpuPlatform(Runtime* runtime)
 
 AnyDSLResult CpuPlatform::init()
 {
-    return AnyDSL_SUCCESS;
+    return mHost.init();
 }
 
 std::tuple<AnyDSLResult, Device*> CpuPlatform::get_device(const AnyDSLGetDeviceRequest* pRequest)
