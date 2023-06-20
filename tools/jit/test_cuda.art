@@ -10,19 +10,16 @@ fn test_func() -> () {
     let size   = 4096;
     let acc    = nvvm_accelerator(dev);
     let buffer = alloc_cuda(dev, size as i64 * sizeof[f32]());
-    let buffer_ptr = anydsl_get_device_ptr(buffer.id) as &mut [f32];
+    let buffer_ptr = buffer.data;
 
     let event1 = create_event_cuda(dev);
+    let event2 = create_event_cuda(dev);
+    let event3 = create_event_cuda(dev);
+    
     event1.record();
 
-    gpu_exec_1d(acc, "", size, 8, |work_item| {
-        let gid = work_item.gidx();
-        if gid >= size { return() }
+    fill_buffer(0, buffer);
 
-        buffer_ptr(gid) = 0;
-    });
-
-    let event2 = create_event_cuda(dev);
     event2.record();
 
     gpu_exec_1d(acc, "compute", size, 8, |work_item| {
@@ -32,7 +29,6 @@ fn test_func() -> () {
         buffer_ptr(gid) *= buffer_ptr(gid) * 16;
     });
 
-    let event3 = create_event_cuda(dev);
     event3.record();
 
     synchronize_cuda(dev);

@@ -287,14 +287,12 @@ AnyDSL_runtime_API AnyDSLResult anydslGetVersion(AnyDSLVersion* pVersion);
 /// @brief Get features of this AnyDSL implementation.
 /// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslGetFeatures(AnyDSLFeatures* pFeatures);
-/// @brief Enumerate through all available device, beside the host. Set pInfo = NULL to
-/// acquire number of devices available, else pInfo should be an array of AnyDSLDeviceInfo.
+/// @brief Enumerate through all available device, beside the host. Set pInfo = NULL to acquire number of devices available, else pInfo should be an array of AnyDSLDeviceInfo.
 /// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslEnumerateDevices(size_t* pCount, AnyDSLDeviceInfo* pInfo);
 
 // -------------------------------------- Functions [Device]
-/// @brief Get a device for AnyDSL. Keep in mind that this is only to access
-/// information, not to gain control over the device.
+/// @brief Get a device for AnyDSL. Keep in mind that this is only to access information, not to gain control over the device.
 /// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslGetDevice(const AnyDSLGetDeviceRequest* pCreateInfo, AnyDSLDevice* pDevice);
 /// @brief Get internal handle of the device. This might be a CUDA context or similar depending on the device.
@@ -308,7 +306,7 @@ AnyDSL_runtime_API AnyDSLResult anydslGetDeviceInfo(AnyDSLDevice device, AnyDSLD
 AnyDSL_runtime_API AnyDSLResult anydslGetDeviceFeatures(AnyDSLDevice device, AnyDSLDeviceFeatures* pDeviceFeatures);
 /// @brief Set features and options of the device. This changes the properties of all instances of this device!
 /// @return AnyDSL_SUCCESS if sucessful.
-AnyDSL_runtime_API AnyDSLResult anydslSetDeviceOptions(AnyDSLDevice device, AnyDSLDeviceOptions* pDeviceOptions);
+AnyDSL_runtime_API AnyDSLResult anydslSetDeviceOptions(AnyDSLDevice device, const AnyDSLDeviceOptions* pDeviceOptions);
 /// @brief Wait for all operations on a device to finish.
 /// @param device The device to wait for.
 /// @return AnyDSL_SUCCESS if sucessful.
@@ -323,8 +321,7 @@ AnyDSL_runtime_API AnyDSLResult anydslLaunchKernel(AnyDSLDevice device, const An
 
 // -------------------------------------- Functions [Buffer]
 /// @brief  Create a buffer on the given device
-/// @param device The device this buffer is bounded to. Use AnyDSL_HOST
-/// if a managed buffer on the host is desired.
+/// @param device The device this buffer is bounded to. Use AnyDSL_NULL_HANDLE if a managed buffer on the host is desired.
 /// @param pInfo The info structure describing the size and features of the buffer.
 /// @param pBuffer Pointer to the new created buffer.
 /// @return AnyDSL_SUCCESS if sucessful.
@@ -374,8 +371,7 @@ AnyDSL_runtime_API AnyDSLResult anydslSynchronizeBuffer(AnyDSLBuffer buffer);
 
 // -------------------------------------- Raw allocations
 /// @brief Allocates memory on the device. This is the same as anydslCreateBuffer (flags=0) but returning a raw pointer.
-/// @param device The device this buffer is bounded to. Use AnyDSL_HOST
-/// if a managed buffer on the host is desired.
+/// @param device The device this buffer is bounded to. Use AnyDSL_NULL_HANDLE if a managed buffer on the host is desired.
 /// @param size The size of the memory block.
 /// @param pPtr Pointer to the pointer pointing at the new memory block.
 /// @return AnyDSL_SUCCESS if sucessful.
@@ -390,8 +386,7 @@ AnyDSL_runtime_API AnyDSLResult anydslReleaseMemory(AnyDSLDevice device, void* p
 // -------------------------------------- Functions [Event]
 /// @brief Create event on a given device.
 /// @param device The device the event is bounded to.
-/// @param pInfo The info structure describing requested flags and other custom
-/// information of the to be created event.
+/// @param pInfo The info structure describing requested flags and other custom information of the to be created event.
 /// @param pEvent Pointer to the newly created event.
 /// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslCreateEvent(AnyDSLDevice device, const AnyDSLCreateEventInfo* pInfo, AnyDSLEvent* pEvent);
@@ -429,8 +424,7 @@ AnyDSL_runtime_API AnyDSLResult anydslDestroyJITModule(AnyDSLJITModule module);
 /// @brief Free a AnyDSLJITCompileResult acquired by anydslCompileJIT.
 /// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslFreeJITCompileResult(const AnyDSLJITCompileResult* pResult);
-/// @brief Lookup a function inside a jit module and return it via pInfo. The given
-/// function name has to be a null-terminated string.
+/// @brief Lookup a function inside a jit module and return it via pInfo. The given function name has to be a null-terminated string.
 /// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslLookupJIT(AnyDSLJITModule module, const char* function, AnyDSLJITLookupInfo* pInfo);
 /// @brief Link an external library to the jit module. Due to the unfortunate nature of the internal machine runtime, this might affect other jit modules as well.

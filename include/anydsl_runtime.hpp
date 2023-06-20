@@ -156,7 +156,10 @@ protected:
             0, // Will be set by the function
             0  // Will be set by the function
         };
-        anydslGetBufferPointer(mBuffer, &ptrInfo); // TODO: Check return value
+        if (anydslGetBufferPointer(mBuffer, &ptrInfo) != AnyDSL_SUCCESS) {
+            anydslDestroyBuffer(mBuffer);
+            return;
+        }
 
         mData = reinterpret_cast<T*>(ptrInfo.devicePointer);
     }

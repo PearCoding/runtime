@@ -151,7 +151,7 @@ AnyDSLResult anydslGetDeviceFeatures(AnyDSLDevice device, AnyDSLDeviceFeatures* 
     return unwrapDeviceHandle(device)->get_features(pDeviceFeatures);
 }
 
-AnyDSLResult anydslSetDeviceOptions(AnyDSLDevice device, AnyDSLDeviceOptions* pDeviceOptions)
+AnyDSLResult anydslSetDeviceOptions(AnyDSLDevice device, const AnyDSLDeviceOptions* pDeviceOptions)
 {
     TRACE();
     CHECK_HANDLE_RET(device);

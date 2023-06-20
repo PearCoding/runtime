@@ -208,9 +208,13 @@ AnyDSL_runtime_std_API const char* anydsl_std_get_device_ptr(uint64_t bufferHand
         AnyDSL_STRUCTURE_TYPE_GET_BUFFER_POINTER_INFO,
         nullptr,
         (AnyDSLDevicePointer)0, // Will be set by the function
-        (AnyDSLDevicePointer)0 // Will be set by the function
+        (AnyDSLDevicePointer)0  // Will be set by the function
     };
-    anydslGetBufferPointer(buffer, &info);
+
+    if (anydslGetBufferPointer(buffer, &info) != AnyDSL_SUCCESS) {
+        anydslLogReportMessage(AnyDSL_LOG_REPORT_LEVEL_ERROR_BIT, "Can not acquire device pointer from buffer");
+        return nullptr;
+    }
 
     return reinterpret_cast<const char*>(info.devicePointer);
 }

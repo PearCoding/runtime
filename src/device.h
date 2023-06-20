@@ -19,10 +19,10 @@ public:
 
     virtual ~Device() {}
 
-    virtual AnyDSLResult get_handle(AnyDSLDeviceHandleInfo* pInfo)     = 0;
-    virtual AnyDSLResult get_info(AnyDSLDeviceInfo* pInfo)             = 0;
-    virtual AnyDSLResult get_features(AnyDSLDeviceFeatures* pFeatures) = 0;
-    virtual AnyDSLResult set_options(AnyDSLDeviceOptions* pOptions)    = 0;
+    virtual AnyDSLResult get_handle(AnyDSLDeviceHandleInfo* pInfo)        = 0;
+    virtual AnyDSLResult get_info(AnyDSLDeviceInfo* pInfo)                = 0;
+    virtual AnyDSLResult get_features(AnyDSLDeviceFeatures* pFeatures)    = 0;
+    virtual AnyDSLResult set_options(const AnyDSLDeviceOptions* pOptions) = 0;
 
     virtual AnyDSLResult sync() = 0;
 

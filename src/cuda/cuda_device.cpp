@@ -152,7 +152,7 @@ AnyDSLResult CudaDevice::get_features(AnyDSLDeviceFeatures* pFeatures)
     return AnyDSL_SUCCESS;
 }
 
-AnyDSLResult CudaDevice::set_options(AnyDSLDeviceOptions* pOptions)
+AnyDSLResult CudaDevice::set_options(const AnyDSLDeviceOptions* pOptions)
 {
     CHECK_RET_PTR(pOptions);
     CHECK_RET_TYPE(pOptions, AnyDSL_STRUCTURE_TYPE_DEVICE_OPTIONS);

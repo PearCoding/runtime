@@ -34,7 +34,7 @@ public:
     AnyDSLResult get_handle(AnyDSLDeviceHandleInfo* pInfo) override;
     AnyDSLResult get_info(AnyDSLDeviceInfo* pInfo) override;
     AnyDSLResult get_features(AnyDSLDeviceFeatures* pFeatures) override;
-    AnyDSLResult set_options(AnyDSLDeviceOptions* pOptions) override;
+    AnyDSLResult set_options(const AnyDSLDeviceOptions* pOptions) override;
 
     AnyDSLResult sync() override;
 
