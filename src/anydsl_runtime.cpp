@@ -2,6 +2,7 @@
 #include "anydsl_runtime_internal_config.h"
 
 #include "buffer.h"
+#include "cache.h"
 #include "device.h"
 #include "event.h"
 #include "log.h"
@@ -56,7 +57,7 @@ AnyDSLResult anydslGetVersion(AnyDSLVersion* pVersion)
 AnyDSLResult anydslGetFeatures(AnyDSLFeatures* pFeatures)
 {
     TRACE();
-    CHECK_RET_PTR(pFeatures);
+    CHECK_RET_TYPE(pFeatures, AnyDSL_STRUCTURE_TYPE_FEATURES);
 
 #ifdef AnyDSL_runtime_HAS_JIT_SUPPORT
     pFeatures->hasJIT = AnyDSL_TRUE;
@@ -72,6 +73,16 @@ AnyDSLResult anydslGetFeatures(AnyDSLFeatures* pFeatures)
 #ifdef AnyDSL_runtime_HAS_IMPALA_LANGUAGE
     pFeatures->supportedLanguages |= AnyDSL_COMPILE_LANGUAGE_IMPALA_BIT;
 #endif
+
+    return AnyDSL_SUCCESS;
+}
+
+AnyDSLResult anydslSetOptions(const AnyDSLOptions* pOptions)
+{
+    CHECK_RET_TYPE(pOptions, AnyDSL_STRUCTURE_TYPE_OPTIONS);
+
+    if (pOptions->globalCacheDir != nullptr)
+        Cache::instance().set_directory(pOptions->globalCacheDir);
 
     return AnyDSL_SUCCESS;
 }

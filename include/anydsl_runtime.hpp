@@ -21,14 +21,14 @@ enum class Platform : int32_t {
 
 class Device {
 public:
-    Device()
+    inline Device()
         : mNum(-1)
         , mHandle(AnyDSL_NULL_HANDLE)
         , mIsHost(false)
     {
     }
 
-    Device(Platform platform, int32_t num = 0)
+    inline Device(Platform platform, int32_t num = 0)
         : mNum(num)
         , mIsHost(platform == Platform::Host)
     {
@@ -59,7 +59,7 @@ protected:
 template <typename T>
 class Array {
 public:
-    Array()
+    inline Array()
         : mData(nullptr)
         , mSize(0)
         , mDevice()
@@ -67,12 +67,12 @@ public:
     {
     }
 
-    Array(int64_t size)
+    inline explicit Array(int64_t size)
         : Array(Device(), size)
     {
     }
 
-    Array(const Device& dev, int64_t size)
+    inline Array(const Device& dev, int64_t size)
         : mData(nullptr)
         , mSize(0)
         , mDevice(dev)
@@ -81,7 +81,7 @@ public:
         allocate(size);
     }
 
-    Array(Array&& other)
+    inline Array(Array&& other)
         : mData(other.mData)
         , mSize(other.mSize)
         , mDevice(other.mDevice)
@@ -91,7 +91,7 @@ public:
         other.mBuffer = AnyDSL_NULL_HANDLE;
     }
 
-    Array& operator=(Array&& other)
+    inline Array& operator=(Array&& other)
     {
         deallocate();
         mDevice       = other.mDevice;
@@ -106,24 +106,24 @@ public:
     Array(const Array&)            = delete;
     Array& operator=(const Array&) = delete;
 
-    ~Array() { deallocate(); }
+    inline ~Array() { deallocate(); }
 
-    T* begin() { return mData; }
-    const T* begin() const { return mData; }
+    inline T* begin() { return mData; }
+    inline const T* begin() const { return mData; }
 
-    T* end() { return mData + mSize; }
-    const T* end() const { return mData + mSize; }
+    inline T* end() { return mData + mSize; }
+    inline const T* end() const { return mData + mSize; }
 
-    T* data() { return mData; }
-    const T* data() const { return mData; }
+    inline T* data() { return mData; }
+    inline const T* data() const { return mData; }
 
-    int64_t size() const { return mSize; }
-    const Device& device() const { return mDevice; }
+    inline int64_t size() const { return mSize; }
+    inline const Device& device() const { return mDevice; }
 
-    const T& operator[](int i) const { return mData[i]; }
-    T& operator[](int i) { return mData[i]; }
+    inline const T& operator[](int i) const { return mData[i]; }
+    inline T& operator[](int i) { return mData[i]; }
 
-    T* release()
+    inline T* release()
     {
         T* ptr = mData;
         mData  = nullptr;
@@ -204,12 +204,14 @@ class Event {
 public:
     inline Event()
         : mDevice()
+        , mEvent(AnyDSL_NULL_HANDLE)
     {
         create();
     }
 
-    inline Event(const Device& device)
+    inline explicit Event(const Device& device)
         : mDevice(device)
+        , mEvent(AnyDSL_NULL_HANDLE)
     {
         create();
     }
@@ -218,6 +220,25 @@ public:
     {
         destroy();
     }
+
+    inline Event(Event&& other)
+        : mDevice(other.mDevice)
+        , mEvent(other.mEvent)
+    {
+        other.mEvent = AnyDSL_NULL_HANDLE;
+    }
+
+    inline Event& operator=(Event&& other)
+    {
+        destroy();
+        mDevice      = other.mDevice;
+        mEvent       = other.mEvent;
+        other.mEvent = AnyDSL_NULL_HANDLE;
+        return *this;
+    }
+
+    inline Event(const Event&)            = delete;
+    inline Event& operator=(const Event&) = delete;
 
     inline bool record()
     {
@@ -258,7 +279,10 @@ private:
 
     inline void destroy()
     {
-        anydslDestroyEvent(mEvent);
+        if (mEvent != AnyDSL_NULL_HANDLE) {
+            anydslDestroyEvent(mEvent);
+            mEvent = AnyDSL_NULL_HANDLE;
+        }
     }
 
     Device mDevice;

@@ -210,6 +210,7 @@ struct JITSingleton {
     void link(const char* lib)
     {
         // TODO: Would be nice to have it per module. But I guess LLVM does not allow it.
+        debug("JIT: linking library '%s'", lib);
         llvm::sys::DynamicLibrary::LoadLibraryPermanently(lib);
     }
 

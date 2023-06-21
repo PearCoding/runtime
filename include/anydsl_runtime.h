@@ -67,6 +67,7 @@ typedef enum AnyDSLDeviceType {
 typedef enum AnyDSLStructureType {
     AnyDSL_STRUCTURE_TYPE_FEATURES    = 0x0,
     AnyDSL_STRUCTURE_TYPE_DEVICE_INFO = 0x1,
+    AnyDSL_STRUCTURE_TYPE_OPTIONS     = 0x2,
 
     AnyDSL_STRUCTURE_TYPE_GET_DEVICE_REQUEST        = 0x10,
     AnyDSL_STRUCTURE_TYPE_DEVICE_HANDLE_INFO        = 0x11,
@@ -136,6 +137,13 @@ typedef struct AnyDSLFeatures {
     AnyDSLBool hasJIT;
     AnyDSLCompileLanguageFlags supportedLanguages;
 } AnyDSLFeatures;
+
+typedef struct AnyDSLOptions {
+    AnyDSLStructureType sType;
+    const void* pNext;
+
+    const char* globalCacheDir; // The global cache dir
+} AnyDSLOptions;
 
 // -------------------------------------- Structures [Device]
 typedef struct AnyDSLDeviceInfo {
@@ -290,6 +298,9 @@ AnyDSL_runtime_API AnyDSLResult anydslGetFeatures(AnyDSLFeatures* pFeatures);
 /// @brief Enumerate through all available device, beside the host. Set pInfo = NULL to acquire number of devices available, else pInfo should be an array of AnyDSLDeviceInfo.
 /// @return AnyDSL_SUCCESS if sucessful.
 AnyDSL_runtime_API AnyDSLResult anydslEnumerateDevices(size_t* pCount, AnyDSLDeviceInfo* pInfo);
+/// @brief Set features and options of the general runtime.
+/// @return AnyDSL_SUCCESS if sucessful.
+AnyDSL_runtime_API AnyDSLResult anydslSetOptions(const AnyDSLOptions* pOptions);
 
 // -------------------------------------- Functions [Device]
 /// @brief Get a device for AnyDSL. Keep in mind that this is only to access information, not to gain control over the device.
