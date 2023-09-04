@@ -36,6 +36,10 @@ AnyDSLResult CudaPlatform::init()
 #endif
 
     CUresult err = cuInit(0);
+    if (err == CUDA_ERROR_NO_DEVICE) {
+        info("CUDA backend did not initialize because no devices were found (CUDA_ERROR_NO_DEVICE).");
+        return AnyDSL_NOT_SUPPORTED;
+    }
     CHECK_CUDA_RET(err, "cuInit()");
 
     err = cuDeviceGetCount(&device_count);

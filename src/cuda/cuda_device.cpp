@@ -11,13 +11,13 @@
 #endif
 
 #ifdef AnyDSL_runtime_HAS_LLVM_SUPPORT
-#include <llvm/Analysis/TargetTransformInfo.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Linker/Linker.h>
 #include <llvm/MC/TargetRegistry.h>
+#include <llvm/Passes/PassBuilder.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/TargetSelect.h>
@@ -422,7 +422,7 @@ AnyDSLResult CudaDevice::compile_nvptx(const std::string& filename, const std::s
     auto target = llvm::TargetRegistry::lookupTarget(triple_str, error_str);
     llvm::TargetOptions options;
     options.AllowFPOpFusion = llvm::FPOpFusion::Fast;
-    std::unique_ptr<llvm::TargetMachine> machine(target->createTargetMachine(triple_str, cpu, "" /* attrs */, options, llvm::Reloc::PIC_, llvm::CodeModel::Small, llvm::CodeGenOpt::Aggressive));
+    llvm::TargetMachine* machine = target->createTargetMachine(triple_str, cpu, "" /* attrs */, options, llvm::Reloc::PIC_, llvm::CodeModel::Small, llvm::CodeGenOpt::Aggressive);
 
     // link libdevice
     std::string libdevice_filename = get_libdevice_path(mComputeCapability);
@@ -443,30 +443,31 @@ AnyDSLResult CudaDevice::compile_nvptx(const std::string& filename, const std::s
         return HANDLE_ERROR(AnyDSL_PLATFORM_ERROR);
     }
 
-    llvm::legacy::FunctionPassManager function_pass_manager(llvm_module.get());
-    llvm::legacy::PassManager module_pass_manager;
-
-    module_pass_manager.add(llvm::createTargetTransformInfoWrapperPass(machine->getTargetIRAnalysis()));
-    function_pass_manager.add(llvm::createTargetTransformInfoWrapperPass(machine->getTargetIRAnalysis()));
-
-    llvm::PassManagerBuilder builder;
-    builder.OptLevel = 3; // Full opt
-    builder.Inliner  = llvm::createFunctionInliningPass(builder.OptLevel, 0, false);
-    machine->adjustPassManager(builder);
-    builder.populateFunctionPassManager(function_pass_manager);
-    builder.populateModulePassManager(module_pass_manager);
-
     machine->Options.MCOptions.AsmVerbose = true;
 
+    // create the analysis managers
+    llvm::LoopAnalysisManager LAM;
+    llvm::FunctionAnalysisManager FAM;
+    llvm::CGSCCAnalysisManager CGAM;
+    llvm::ModuleAnalysisManager MAM;
+
+    llvm::PassBuilder PB(machine);
+
+    PB.registerModuleAnalyses(MAM);
+    PB.registerCGSCCAnalyses(CGAM);
+    PB.registerFunctionAnalyses(FAM);
+    PB.registerLoopAnalyses(LAM);
+    PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
+
+    llvm::ModulePassManager MPM = PB.buildPerModuleDefaultPipeline(llvm::OptimizationLevel::O3);
+
+    MPM.run(*llvm_module, MAM);
+
+    llvm::legacy::PassManager module_pass_manager;
     llvm::SmallString<0> outstr;
     llvm::raw_svector_ostream llvm_stream(outstr);
 
     machine->addPassesToEmitFile(module_pass_manager, llvm_stream, nullptr, llvm::CodeGenFileType::CGFT_AssemblyFile, true);
-
-    function_pass_manager.doInitialization();
-    for (auto func = llvm_module->begin(); func != llvm_module->end(); ++func)
-        function_pass_manager.run(*func);
-    function_pass_manager.doFinalization();
     module_pass_manager.run(*llvm_module);
 
     *compiled = outstr.str().str();

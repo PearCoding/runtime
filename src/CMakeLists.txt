@@ -1,6 +1,5 @@
 # Necessary to specify whether or not to build shared libraries on a per-project basis
 option(AnyDSL_runtime_BUILD_SHARED "Builds a shared library for the runtime (and JIT, if enabled)" ${BUILD_SHARED_LIBS})
-
 if(AnyDSL_runtime_BUILD_SHARED)
     set(AnyDSL_runtime_BUILD "SHARED")
 else()
@@ -161,6 +160,12 @@ set(AnyDSL_runtime_HAS_HSA_SUPPORT ${hsa-runtime64_FOUND} CACHE INTERNAL "enable
 find_package(LLVM)
 
 if(LLVM_FOUND)
+    if(NOT DEFINED AnyDSL_LLVM_LINK_SHARED)
+        if(LLVM_LINK_LLVM_DYLIB)
+            set(AnyDSL_LLVM_LINK_SHARED "USE_SHARED")
+        endif()
+    endif()
+
     target_compile_definitions(runtime PRIVATE ${LLVM_DEFINITIONS})
     target_include_directories(runtime SYSTEM PRIVATE ${LLVM_INCLUDE_DIRS})
     set(AnyDSL_runtime_LLVM_COMPONENTS irreader support ${LLVM_TARGETS_TO_BUILD})

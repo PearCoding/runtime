@@ -12,13 +12,13 @@
 
 #ifdef AnyDSL_runtime_HAS_LLVM_SUPPORT
 #include <lld/Common/Driver.h>
-#include <llvm/Analysis/TargetTransformInfo.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IRReader/IRReader.h>
 #include <llvm/Linker/Linker.h>
 #include <llvm/MC/TargetRegistry.h>
+#include <llvm/Passes/PassBuilder.h>
 #include <llvm/Support/raw_os_ostream.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/SourceMgr.h>
@@ -248,6 +248,10 @@ HSAPlatform::HSAPlatform(Runtime* runtime)
     : Platform(runtime)
 {
     hsa_status_t status = hsa_init();
+    if (status == HSA_STATUS_ERROR_OUT_OF_RESOURCES) {
+        info("HSA runtime failed to initialize (HSA_STATUS_ERROR_OUT_OF_RESOURCES). This is likely caused by a lack of suitable HSA devices and may be ignored.");
+        return;
+    }
     CHECK_HSA(status, "hsa_init()");
 
     uint16_t version_major, version_minor;
@@ -566,7 +570,7 @@ HSAPlatform::KernelInfo& HSAPlatform::load_kernel(DeviceId dev, const std::strin
 #define AnyDSL_runtime_HSA_BITCODE_SUFFIX ".bc"
 #endif
 bool llvm_amdgpu_initialized = false;
-std::string HSAPlatform::emit_gcn(const std::string& program, const std::string& cpu, const std::string &filename, int opt) const {
+std::string HSAPlatform::emit_gcn(const std::string& program, const std::string& cpu, const std::string& filename, llvm::OptimizationLevel opt_level) const {
     if (!llvm_amdgpu_initialized) {
         // ANYDSL_LLVM_ARGS="-amdgpu-sroa -amdgpu-load-store-vectorizer -amdgpu-scalarize-global-loads -amdgpu-internalize-symbols -amdgpu-early-inline-all -amdgpu-sdwa-peephole -amdgpu-dpp-combine -enable-amdgpu-aa -amdgpu-late-structurize=0 -amdgpu-function-calls -amdgpu-simplify-libcall -amdgpu-ir-lower-kernel-arguments -amdgpu-atomic-optimizations -amdgpu-mode-register"
         const char* env_var = std::getenv("ANYDSL_LLVM_ARGS");
@@ -611,7 +615,7 @@ std::string HSAPlatform::emit_gcn(const std::string& program, const std::string&
     options.AllowFPOpFusion = llvm::FPOpFusion::Fast;
     options.NoTrappingFPMath = true;
     std::string attrs = "-trap-handler";
-    std::unique_ptr<llvm::TargetMachine> machine(target->createTargetMachine(triple_str, cpu, attrs, options, llvm::Reloc::PIC_, llvm::CodeModel::Small, llvm::CodeGenOpt::Aggressive));
+    llvm::TargetMachine* machine = target->createTargetMachine(triple_str, cpu, attrs, options, llvm::Reloc::PIC_, llvm::CodeModel::Small, llvm::CodeGenOpt::Aggressive);
 
     // link ocml.amdgcn and ocml config
     if (cpu.compare(0, 3, "gfx"))
@@ -660,30 +664,30 @@ std::string HSAPlatform::emit_gcn(const std::string& program, const std::string&
         error("Can't link config into module");
 
     auto run_pass_manager = [&] (std::unique_ptr<llvm::Module> module, llvm::CodeGenFileType cogen_file_type, std::string out_filename, bool print_ir=false) {
-        llvm::legacy::FunctionPassManager function_pass_manager(module.get());
-        llvm::legacy::PassManager module_pass_manager;
-
-        module_pass_manager.add(llvm::createTargetTransformInfoWrapperPass(machine->getTargetIRAnalysis()));
-        function_pass_manager.add(llvm::createTargetTransformInfoWrapperPass(machine->getTargetIRAnalysis()));
-
-        llvm::PassManagerBuilder builder;
-        builder.OptLevel = opt;
-        builder.Inliner = llvm::createFunctionInliningPass(builder.OptLevel, 0, false);
-        machine->adjustPassManager(builder);
-        builder.populateFunctionPassManager(function_pass_manager);
-        builder.populateModulePassManager(module_pass_manager);
-
         machine->Options.MCOptions.AsmVerbose = true;
 
+        // create the analysis managers
+        llvm::LoopAnalysisManager LAM;
+        llvm::FunctionAnalysisManager FAM;
+        llvm::CGSCCAnalysisManager CGAM;
+        llvm::ModuleAnalysisManager MAM;
+
+        llvm::PassBuilder PB(machine);
+
+        PB.registerModuleAnalyses(MAM);
+        PB.registerCGSCCAnalyses(CGAM);
+        PB.registerFunctionAnalyses(FAM);
+        PB.registerLoopAnalyses(LAM);
+        PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
+
+        llvm::ModulePassManager MPM = PB.buildPerModuleDefaultPipeline(opt_level);
+
+        MPM.run(*module, MAM);
+
+        llvm::legacy::PassManager module_pass_manager;
         llvm::SmallString<0> outstr;
         llvm::raw_svector_ostream llvm_stream(outstr);
-
         machine->addPassesToEmitFile(module_pass_manager, llvm_stream, nullptr, cogen_file_type, true);
-
-        function_pass_manager.doInitialization();
-        for (auto func = module->begin(); func != module->end(); ++func)
-            function_pass_manager.run(*func);
-        function_pass_manager.doFinalization();
         module_pass_manager.run(*module);
 
         if (print_ir) {
@@ -720,14 +724,14 @@ std::string HSAPlatform::emit_gcn(const std::string& program, const std::string&
     return runtime_->load_file(gcn_file);
 }
 #else
-std::string HSAPlatform::emit_gcn(const std::string&, const std::string&, const std::string &, int) const {
+std::string HSAPlatform::emit_gcn(const std::string&, const std::string&, const std::string&, llvm::OptimizationLevel) const {
     error("Recompile runtime with LLVM enabled for gcn support.");
 }
 #endif
 
 std::string HSAPlatform::compile_gcn(DeviceId dev, const std::string& filename, const std::string& program_string) const {
     debug("Compiling AMDGPU to GCN using amdgpu for '%' on HSA device %", filename, dev);
-    return emit_gcn(program_string, devices_[dev].isa, filename, 3);
+    return emit_gcn(program_string, devices_[dev].isa, filename, llvm::OptimizationLevel::O3);
 }
 
 const char* HSAPlatform::device_name(DeviceId dev) const {
